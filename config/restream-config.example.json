@@ -1,0 +1,148 @@
+{
+    "fields": {
+        "1": {
+            "name": "Place 1",
+            "emoji": "🏟️",
+            "enabled": false,
+            "stream_key": "stream1",
+            "key": "CHANGE_ME_PLACE_1",
+            "publish_auth_enabled": false,
+            "restream_urls": []
+        },
+        "2": {
+            "name": "Place 2",
+            "emoji": "🏟️",
+            "enabled": false,
+            "stream_key": "stream2",
+            "key": "CHANGE_ME_PLACE_2",
+            "publish_auth_enabled": false,
+            "restream_urls": []
+        },
+        "3": {
+            "name": "Place 3",
+            "emoji": "🏟️",
+            "enabled": false,
+            "stream_key": "stream3",
+            "key": "CHANGE_ME_PLACE_3",
+            "publish_auth_enabled": false,
+            "restream_urls": []
+        },
+        "4": {
+            "name": "Place 4",
+            "emoji": "🏟️",
+            "enabled": false,
+            "stream_key": "stream4",
+            "key": "CHANGE_ME_PLACE_4",
+            "publish_auth_enabled": false,
+            "restream_urls": []
+        },
+        "5": {
+            "name": "Place 5",
+            "emoji": "🏟️",
+            "enabled": false,
+            "stream_key": "stream5",
+            "key": "CHANGE_ME_PLACE_5",
+            "publish_auth_enabled": false,
+            "restream_urls": []
+        },
+        "6": {
+            "name": "Place 6",
+            "emoji": "🏟️",
+            "enabled": false,
+            "stream_key": "stream6",
+            "key": "CHANGE_ME_PLACE_6",
+            "publish_auth_enabled": false,
+            "restream_urls": []
+        },
+        "7": {
+            "name": "Place 7",
+            "emoji": "🏟️",
+            "enabled": false,
+            "stream_key": "stream7",
+            "key": "CHANGE_ME_PLACE_7",
+            "publish_auth_enabled": false,
+            "restream_urls": []
+        },
+        "8": {
+            "name": "Place 8",
+            "emoji": "🏟️",
+            "enabled": false,
+            "stream_key": "stream8",
+            "key": "CHANGE_ME_PLACE_8",
+            "publish_auth_enabled": false,
+            "restream_urls": []
+        },
+        "9": {
+            "name": "Place 9",
+            "emoji": "🏟️",
+            "enabled": false,
+            "stream_key": "stream9",
+            "key": "CHANGE_ME_PLACE_9",
+            "publish_auth_enabled": false,
+            "restream_urls": []
+        },
+        "10": {
+            "name": "Place 10",
+            "emoji": "🏟️",
+            "enabled": false,
+            "stream_key": "stream10",
+            "key": "CHANGE_ME_PLACE_10",
+            "publish_auth_enabled": false,
+            "restream_urls": []
+        },
+        "11": {
+            "name": "Place 11",
+            "emoji": "🏟️",
+            "enabled": false,
+            "stream_key": "stream11",
+            "key": "CHANGE_ME_PLACE_11",
+            "publish_auth_enabled": false,
+            "restream_urls": []
+        },
+        "12": {
+            "name": "Place 12",
+            "emoji": "🏟️",
+            "enabled": false,
+            "stream_key": "stream12",
+            "key": "CHANGE_ME_PLACE_12",
+            "publish_auth_enabled": false,
+            "restream_urls": []
+        },
+        "13": {
+            "name": "Place 13",
+            "emoji": "🏟️",
+            "enabled": false,
+            "stream_key": "stream13",
+            "key": "CHANGE_ME_PLACE_13",
+            "publish_auth_enabled": false,
+            "restream_urls": []
+        },
+        "14": {
+            "name": "Place 14",
+            "emoji": "🏟️",
+            "enabled": false,
+            "stream_key": "stream14",
+            "key": "CHANGE_ME_PLACE_14",
+            "publish_auth_enabled": false,
+            "restream_urls": []
+        },
+        "15": {
+            "name": "Place 15",
+            "emoji": "🏟️",
+            "enabled": false,
+            "stream_key": "stream15",
+            "key": "CHANGE_ME_PLACE_15",
+            "publish_auth_enabled": false,
+            "restream_urls": []
+        },
+        "16": {
+            "name": "Place 16",
+            "emoji": "🏟️",
+            "enabled": false,
+            "stream_key": "stream16",
+            "key": "CHANGE_ME_PLACE_16",
+            "publish_auth_enabled": false,
+            "restream_urls": []
+        }
+    }
+}

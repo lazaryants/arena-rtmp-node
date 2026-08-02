@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Configuration</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .nav-menu {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .nav-menu a {
+            padding: 10px 20px;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .nav-menu a:hover { background: rgba(255, 255, 255, 0.2); transform: translateY(-2px); }
+        .nav-menu a.active { background: #4CAF50; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4); }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header p { opacity: 0.9; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .btn-primary { background: #4CAF50; color: white; }
+        .btn-danger { background: #f44336; color: white; }
+        .btn-warning { background: #ff9800; color: white; }
+        .btn-info { background: #2196F3; color: white; }
+        .btn-secondary { background: #757575; color: white; }
+        .fields-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        .field-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .field-card.disabled { opacity: 0.5; }
+        .field-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        .field-title { font-size: 1.3em; font-weight: 600; }
+        .field-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .field-row:last-child { border-bottom: none; }
+        .field-label { font-weight: 600; opacity: 0.8; }
+        .field-value {
+            font-family: 'Courier New', monospace;
+            color: #64B5F6;
+            word-break: break-all;
+            text-align: right;
+            max-width: 60%;
+        }
+        .field-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .field-actions .btn { flex: 1; padding: 8px; font-size: 0.9em; }
+        .enabled-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        .enabled-badge.on { background: rgba(76, 175, 80, 0.3); border: 2px solid #4CAF50; }
+        .enabled-badge.off { background: rgba(244, 67, 54, 0.3); border: 2px solid #f44336; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-content h2 { margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1em;
+        }
+        .form-group input:focus, .form-group select:focus { outline: 2px solid #64B5F6; }
+        .form-group .checkbox-group { display: flex; align-items: center; gap: 10px; }
+        .form-group input[type="checkbox"] { width: auto; }
+        .form-group .hint {
+            font-size: 0.85em;
+            opacity: 0.7;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .modal-actions .btn { flex: 1; }
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .alert.success { background: rgba(76, 175, 80, 0.3); border: 2px solid #4CAF50; display: block; }
+        .alert.error { background: rgba(244, 67, 54, 0.3); border: 2px solid #f44336; display: block; }
+        .copy-btn {
+            background: none;
+            border: none;
+            color: #64B5F6;
+            cursor: pointer;
+            font-size: 0.9em;
+            padding: 2px 6px;
+        }
+        .copy-btn:hover { text-decoration: underline; }
+        .stream-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .stream-status.active { background: rgba(76, 175, 80, 0.3); border: 2px solid #4CAF50; }
+        .stream-status.stale { background: rgba(255, 152, 0, 0.3); border: 2px solid #ff9800; }
+        .stream-status.no-signal { background: rgba(158, 158, 158, 0.3); border: 2px solid #9e9e9e; }
+        @media (max-width: 768px) {
+            .fields-grid { grid-template-columns: 1fr; }
+            .header h1 { font-size: 1.8em; }
+            .nav-menu { flex-wrap: wrap; }
+            .nav-menu a { flex: 1; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="nav-menu">
+            <a href="/">📺 Monitoring</a>
+            <a href="/config/" class="active">⚙️ Configuration</a>
+            <a href="/admin/">🎛️ Restream Control</a>
+        </nav>
+        
+        <div class="header">
+            <h1>⚙️ Stream Configuration</h1>
+            <p>Manage cricket field streams</p>
+        </div>
+        <div id="alert" class="alert"></div>
+        <div class="toolbar">
+            <div>
+                <strong>Total:</strong> <span id="totalFields">0</span>/16 |
+                <strong>Enabled:</strong> <span id="enabledFields">0</span> |
+                <strong>Active:</strong> <span id="activeFields">0</span>
+            </div>
+            <button class="btn btn-primary" onclick="openCreateModal()">➕ Add New Field</button>
+        </div>
+        <div class="fields-grid" id="fieldsGrid"></div>
+    </div>
+    <div id="fieldModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Add New Field</h2>
+            <input type="hidden" id="editFieldId">
+            
+            <div class="form-group">
+                <label>Name:</label>
+                <input type="text" id="fieldName" placeholder="Field 1">
+            </div>
+            
+            <div class="form-group">
+                <label>Emoji:</label>
+                <select id="fieldEmoji">
+                    <option value="🏟️">🏟️ Stadium</option>
+                    <option value="🏏">🏏 Cricket</option>
+                    <option value="📍">📍 Location</option>
+                    <option value="📹">📹 Camera</option>
+                    <option value="🎥">🎥 Video</option>
+                    <option value="🌍">🌍 World</option>
+                    <option value="🇮🇳">🇮🇳 India</option>
+                    <option value="🇵🇰">🇵🇰 Pakistan</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Stream Key:</label>
+                <input type="text" id="fieldStreamKey" placeholder="stream1">
+                <div class="hint">Custom stream key for RTMP. Leave empty for default (stream{ID}). Changing this will update RTMP and HLS URLs.</div>
+            </div>
+            
+            <div class="form-group">
+                <label>Enabled (show on main page):</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="fieldEnabled" checked>
+                    <label for="fieldEnabled">Visible on monitoring page</label>
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveField()">Save</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        let fields = {};
+        async function loadFields() {
+            try {
+                const [fieldsResponse, statusResponse] = await Promise.all([
+                    fetch('/admin/api/config/fields/all'),
+                    fetch('/admin/api/config/fields/status')
+                ]);
+                fields = await fieldsResponse.json();
+                const status = await statusResponse.json();
+                
+                Object.keys(fields).forEach(id => {
+                    fields[id].stream_status = status[id] || 'no_signal';
+                });
+                
+                renderFields();
+            } catch (error) {
+                showAlert('Failed to load fields: ' + error.message, 'error');
+            }
+        }
+        function renderFields() {
+            const grid = document.getElementById('fieldsGrid');
+            const total = Object.keys(fields).length;
+            const enabled = Object.values(fields).filter(f => f.enabled).length;
+            const active = Object.values(fields).filter(f => f.stream_status === 'active').length;
+            
+            document.getElementById('totalFields').textContent = total;
+            document.getElementById('enabledFields').textContent = enabled;
+            document.getElementById('activeFields').textContent = active;
+            if (total === 0) {
+                grid.innerHTML = '<div style="text-align: center; padding: 40px; opacity: 0.7;">No fields configured. Click "Add New Field" to start.</div>';
+                return;
+            }
+            grid.innerHTML = Object.entries(fields).map(([id, field]) => {
+                const baseUrl = field.rtmp_url.replace(/\/[^\/]+$/, '');
+                const streamKey = field.stream_key || `stream${id}`;
+                
+                let statusBadge = '';
+                if (field.stream_status === 'active') {
+                    statusBadge = '<span class="stream-status active">🟢 Active</span>';
+                } else if (field.stream_status === 'stale') {
+                    statusBadge = '<span class="stream-status stale">🟠 Stale</span>';
+                } else {
+                    statusBadge = '<span class="stream-status no-signal">⚫ No signal</span>';
+                }
+                
+                return `
+                <div class="field-card ${field.enabled ? '' : 'disabled'}">
+                    <div class="field-header">
+                        <div class="field-title">${field.emoji || '🏟️'} ${field.name}</div>
+                        <div>
+                            ${statusBadge}
+                            <span class="enabled-badge ${field.enabled ? 'on' : 'off'}">
+                                ${field.enabled ? '🟢 ON' : '⚫ OFF'}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Slot:</span>
+                        <span class="field-value">#${id} / 16</span>
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">📡 RTMP URL:</span>
+                        <span class="field-value">
+                            ${baseUrl}
+                            <button class="copy-btn" onclick="copyToClipboard('${baseUrl}')">📋</button>
+                        </span>
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">🔑 Stream Key:</span>
+                        <span class="field-value">
+                            ${streamKey}
+                            <button class="copy-btn" onclick="copyToClipboard('${streamKey}')">📋</button>
+                        </span>
+                    </div>
+                    ${field.key ? `
+                    <div class="field-row">
+                        <span class="field-label">🔐 Secret Key:</span>
+                        <span class="field-value">
+                            ${field.key}
+                            <button class="copy-btn" onclick="regenerateKey('${id}')">🔄</button>
+                        </span>
+                    </div>
+                    ` : ''}
+                    <div class="field-row">
+                        <span class="field-label">HLS URL:</span>
+                        <span class="field-value">${field.hls_url}</span>
+                    </div>
+                    <div class="field-actions">
+                        <button class="btn btn-info" onclick="openEditModal('${id}')">✏️ Edit</button>
+                        <button class="btn btn-warning" onclick="toggleEnabled('${id}')">
+                            ${field.enabled ? '🔴 Disable' : '🟢 Enable'}
+                        </button>
+                        <button class="btn btn-danger" onclick="deleteField('${id}')">🗑️ Delete</button>
+                    </div>
+                </div>
+            `}).join('');
+        }
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = 'Add New Field';
+            document.getElementById('editFieldId').value = '';
+            document.getElementById('fieldName').value = '';
+            document.getElementById('fieldEmoji').value = '🏟️';
+            document.getElementById('fieldStreamKey').value = '';
+            document.getElementById('fieldEnabled').checked = true;
+            document.getElementById('fieldModal').classList.add('active');
+        }
+        function openEditModal(id) {
+            const field = fields[id];
+            if (!field) return;
+            
+            document.getElementById('modalTitle').textContent = `Edit: ${field.name}`;
+            document.getElementById('editFieldId').value = id;
+            document.getElementById('fieldName').value = field.name;
+            document.getElementById('fieldEmoji').value = field.emoji || '🏟️';
+            document.getElementById('fieldStreamKey').value = field.stream_key || '';
+            document.getElementById('fieldEnabled').checked = field.enabled;
+            document.getElementById('fieldModal').classList.add('active');
+        }
+        function closeModal() {
+            document.getElementById('fieldModal').classList.remove('active');
+        }
+        async function saveField() {
+            const id = document.getElementById('editFieldId').value;
+            const data = {
+                name: document.getElementById('fieldName').value || 'Unnamed Field',
+                emoji: document.getElementById('fieldEmoji').value,
+                stream_key: document.getElementById('fieldStreamKey').value.trim(),
+                enabled: document.getElementById('fieldEnabled').checked
+            };
+            try {
+                let response;
+                if (id) {
+                    response = await fetch(`/admin/api/config/fields/${id}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(data)
+                    });
+                } else {
+                    response = await fetch('/admin/api/config/fields', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(data)
+                    });
+                }
+                const result = await response.json();
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    closeModal();
+                    loadFields();
+                } else {
+                    showAlert(result.message, 'error');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
+        async function toggleEnabled(id) {
+            const field = fields[id];
+            try {
+                const response = await fetch(`/admin/api/config/fields/${id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ enabled: !field.enabled })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    loadFields();
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
+        async function deleteField(id) {
+            if (!confirm(`Delete field "${fields[id].name}"? This cannot be undone.`)) return;
+            
+            try {
+                const response = await fetch(`/admin/api/config/fields/${id}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    loadFields();
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
+        async function regenerateKey(id) {
+            if (!confirm('Generate a new random key for this field?')) return;
+            
+            try {
+                const response = await fetch(`/admin/api/config/fields/${id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ key: generateRandomKey() })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showAlert('Key regenerated', 'success');
+                    loadFields();
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
+        function generateRandomKey() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < 12; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showAlert('Copied to clipboard!', 'success');
+                setTimeout(() => hideAlert(), 2000);
+            });
+        }
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert ${type}`;
+            setTimeout(() => hideAlert(), 5000);
+        }
+        function hideAlert() {
+            const alert = document.getElementById('alert');
+            alert.className = 'alert';
+        }
+        document.getElementById('fieldModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+        loadFields();
+        setInterval(loadFields, 10000);
+    </script>
+</body>
+</html>

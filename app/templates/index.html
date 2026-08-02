@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Restream Control Panel</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .nav-menu {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .nav-menu a {
+            padding: 10px 20px;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .nav-menu a:hover { background: rgba(255, 255, 255, 0.2); transform: translateY(-2px); }
+        .nav-menu a.active { background: #4CAF50; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4); }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .logout { position: absolute; top: 20px; right: 20px; }
+        .logout a { color: white; text-decoration: none; padding: 10px 20px; background: rgba(255,255,255,0.2); border-radius: 5px; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .card {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+        }
+        .card h3 { margin: 0; }
+        .overall-status {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        .overall-status.all-running { background: rgba(76, 175, 80, 0.3); border: 2px solid #4CAF50; }
+        .overall-status.partial { background: rgba(255, 152, 0, 0.3); border: 2px solid #ff9800; }
+        .overall-status.all-stopped { background: rgba(244, 67, 54, 0.3); border: 2px solid #f44336; }
+        .overall-status.no-urls { background: rgba(158, 158, 158, 0.3); border: 2px solid #9e9e9e; }
+        
+        .url-item {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        .url-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .url-number {
+            font-weight: bold;
+            color: #64B5F6;
+        }
+        .url-status {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        .url-status.running { background: rgba(76, 175, 80, 0.3); border: 2px solid #4CAF50; }
+        .url-status.stopped { background: rgba(244, 67, 54, 0.3); border: 2px solid #f44336; }
+        
+        .url-input-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .url-input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 5px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+        }
+        .url-input:focus { outline: 2px solid #64B5F6; }
+        
+        .url-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.85em;
+            transition: all 0.3s;
+        }
+        .btn:hover { opacity: 0.8; transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-start { background: #4CAF50; color: white; }
+        .btn-stop { background: #f44336; color: white; }
+        .btn-save { background: #2196F3; color: white; }
+        .btn-delete { background: #9e9e9e; color: white; }
+        .btn-add { background: #4CAF50; color: white; width: 100%; padding: 10px; margin-top: 10px; }
+        .btn-global { background: #ff9800; color: white; }
+        
+        .global-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid rgba(255,255,255,0.2);
+        }
+        .global-actions .btn { flex: 1; padding: 10px; }
+        
+        details { margin-top: 10px; }
+        summary {
+            cursor: pointer;
+            padding: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+        .logs {
+            margin-top: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8em;
+        }
+        .log-line { padding: 2px 0; word-break: break-all; }
+        .log-error { color: #f44336; }
+        
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+            .nav-menu { flex-wrap: wrap; }
+            .nav-menu a { flex: 1; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav-menu">
+        <a href="/">📺 Monitoring</a>
+        <a href="/config/">⚙️ Configuration</a>
+        <a href="/admin/" class="active">🎛️ Restream Control</a>
+    </nav>
+    
+    <div class="header">
+        <h1>🎛️ Restream Control Panel</h1>
+        <p>Multi-destination restreaming</p>
+    </div>
+    
+    <div class="logout">
+        <a href="?logout=1">Logout</a>
+    </div>
+    
+    <div class="grid">
+        {% for field_id, field in fields.items() %}
+        <div class="card" id="field-{{ field_id }}">
+            <div class="card-header">
+                <h3>🏟️ {{ field.name }}</h3>
+                {% if field.total_count == 0 %}
+                    <span class="overall-status no-urls">No URLs</span>
+                {% elif field.running_count == field.total_count %}
+                    <span class="overall-status all-running">🟢 {{ field.running_count }}/{{ field.total_count }}</span>
+                {% elif field.running_count > 0 %}
+                    <span class="overall-status partial">🟠 {{ field.running_count }}/{{ field.total_count }}</span>
+                {% else %}
+                    <span class="overall-status all-stopped">⚫ 0/{{ field.total_count }}</span>
+                {% endif %}
+            </div>
+
+            {% for url_data in field.urls %}
+            <div class="url-item" id="url-{{ field_id }}-{{ url_data.index }}">
+                <div class="url-header">
+                    <span class="url-number">Destination #{{ url_data.index + 1 }}</span>
+                    <span class="url-status {% if url_data.status.status == 'running' %}running{% else %}stopped{% endif %}">
+                        {% if url_data.status.status == 'running' %}
+                            🟢 RUNNING
+                        {% else %}
+                            ⚫ STOPPED
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="url-input-row">
+                    <input type="text" 
+                           class="url-input" 
+                           id="input-{{ field_id }}-{{ url_data.index }}" 
+                           value="{{ url_data.url }}"
+                           placeholder="rtmp://server.com/live/key">
+                    <button class="btn btn-save" onclick="saveUrl({{ field_id }}, {{ url_data.index }})">💾</button>
+                </div>
+                
+                <div class="url-actions">
+                    <button class="btn btn-start" 
+                            onclick="controlUrl({{ field_id }}, {{ url_data.index }}, 'start')"
+                            {% if url_data.status.status == 'running' or not url_data.url %}disabled{% endif %}>
+                        ▶ Start
+                    </button>
+                    <button class="btn btn-stop" 
+                            onclick="controlUrl({{ field_id }}, {{ url_data.index }}, 'stop')"
+                            {% if url_data.status.status != 'running' %}disabled{% endif %}>
+                        ⏹ Stop
+                    </button>
+                    <button class="btn btn-delete" 
+                            onclick="deleteUrl({{ field_id }}, {{ url_data.index }})">
+                        🗑️ Delete
+                    </button>
+                </div>
+                
+                <details>
+                    <summary>📋 Logs</summary>
+                    <div class="logs" id="logs-{{ field_id }}-{{ url_data.index }}">Loading...</div>
+                </details>
+            </div>
+            {% endfor %}
+            
+            <button class="btn btn-add" onclick="addUrl({{ field_id }})">➕ Add Destination</button>
+            
+            {% if field.total_count > 0 %}
+            <div class="global-actions">
+                <button class="btn btn-global" 
+                        onclick="controlAll({{ field_id }}, 'start')"
+                        {% if field.running_count == field.total_count %}disabled{% endif %}>
+                    ▶ Start All
+                </button>
+                <button class="btn btn-global" 
+                        onclick="controlAll({{ field_id }}, 'stop')"
+                        {% if field.running_count == 0 %}disabled{% endif %}>
+                    ⏹ Stop All
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        async function saveUrl(fieldId, urlIndex) {
+            const input = document.getElementById(`input-${fieldId}-${urlIndex}`);
+            const newUrl = input.value.trim();
+            
+            try {
+                let response;
+                if (newUrl) {
+                    response = await fetch(`/admin/api/restream-urls/${fieldId}/${urlIndex}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({url: newUrl})
+                    });
+                } else {
+                    alert('URL cannot be empty. Use Delete button to remove.');
+                    return;
+                }
+                
+                const data = await response.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function addUrl(fieldId) {
+            const url = prompt('Enter destination URL (e.g., rtmp://youtube.com/live/key):');
+            if (!url) return;
+            
+            try {
+                const response = await fetch(`/admin/api/restream-urls/${fieldId}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({url: url.trim()})
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function deleteUrl(fieldId, urlIndex) {
+            if (!confirm('Delete this destination URL?')) return;
+            
+            try {
+                const response = await fetch(`/admin/api/restream-urls/${fieldId}/${urlIndex}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function controlUrl(fieldId, urlIndex, action) {
+            try {
+                const response = await fetch(`/admin/api/${action}/${fieldId}/${urlIndex}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function controlAll(fieldId, action) {
+            if (!confirm(`${action === 'start' ? 'Start' : 'Stop'} all destinations for this field?`)) return;
+            
+            try {
+                // Запускаем/останавливаем все URL для поля
+                const response = await fetch(`/admin/api/${action}/${fieldId}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function loadLogs(fieldId, urlIndex) {
+            try {
+                const response = await fetch(`/admin/api/logs/${fieldId}/${urlIndex}`);
+                const data = await response.json();
+                
+                const logsDiv = document.getElementById(`logs-${fieldId}-${urlIndex}`);
+                if (data.logs && data.logs.length > 0) {
+                    logsDiv.innerHTML = data.logs.map(line => 
+                        `<div class="log-line ${line.toLowerCase().includes('error') ? 'log-error' : ''}">${line}</div>`
+                    ).join('');
+                    logsDiv.scrollTop = logsDiv.scrollHeight;
+                } else {
+                    logsDiv.innerHTML = '<div class="log-line">No logs available</div>';
+                }
+            } catch (error) {
+                console.error('Failed to load logs:', error);
+            }
+        }
+
+        // Автообновление каждые 10 секунд
+        setInterval(() => {
+            location.reload();
+        }, 10000);
+
+        // Загрузка логов при открытии details
+        document.querySelectorAll('details').forEach(details => {
+            details.addEventListener('toggle', function() {
+                if (this.open) {
+                    const id = this.id || this.querySelector('.logs').id;
+                    const logsId = this.querySelector('.logs').id;
+                    const parts = logsId.replace('logs-', '').split('-');
+                    const fieldId = parts[0];
+                    const urlIndex = parts[1];
+                    loadLogs(fieldId, urlIndex);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+[Unit]
+Description=RTMP Auth Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Environment="CRICKET_RTMP_CONFIG=/opt/restream-config.json"
+ExecStart=/usr/bin/python3 /opt/rtmp_auth.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=DVR Recorder Service
+After=network.target nginx.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 /opt/dvr-recorder.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

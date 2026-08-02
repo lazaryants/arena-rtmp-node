@@ -1,0 +1,11 @@
+Captured: 2026-08-02T08:50:11+03:00
+
+Operating System: Ubuntu 24.04.4 LTS
+          Kernel: Linux 6.8.0-136-generic
+    Architecture: x86-64
+
+nginx version: nginx/1.24.0 (Ubuntu)
+ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers
+Python 3.12.3
+libnginx-mod-rtmp 1:1.2.2+dfsg-5build1
+nginx 1.24.0-2ubuntu7.15
