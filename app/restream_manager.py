@@ -10,20 +10,18 @@ import psutil
 import secrets
 from datetime import datetime
 
-APP_DIR = os.environ.get('CRICKET_RTMP_APP_DIR', '/opt/restream-app')
-PUBLIC_HOST = os.environ.get('CRICKET_RTMP_PUBLIC_HOST', 'rtmp.cricket-stream.icu')
-HLS_ROOT = os.environ.get('CRICKET_RTMP_HLS_ROOT', '/var/www/hls')
+try:
+    from .settings import SETTINGS
+except ImportError:
+    from settings import SETTINGS
 
 app = Flask(
     __name__,
-    template_folder=os.path.join(APP_DIR, 'templates'),
+    template_folder=str(SETTINGS.template_dir),
 )
 
 # ===== КОНФИГУРАЦИЯ =====
-CONFIG_FILE = os.environ.get(
-    'CRICKET_RTMP_CONFIG',
-    '/opt/restream-config.json',
-)
+CONFIG_FILE = SETTINGS.config_file
 
 RTMP_URL_PATTERN = re.compile(
     r"rtmps?://\S+",
@@ -127,16 +125,17 @@ def get_fields():
         
         fields[int(field_id)] = {
             'name': field_data.get('name', f'Field {field_id}'),
-            'source': f'http://localhost/hls/place{field_id}/{stream_key}.m3u8',
+            'source': f'{SETTINGS.local_hls_origin}/place{field_id}/{stream_key}.m3u8',
             'urls': urls,
-            'pid_files': [f'/tmp/restream_field{field_id}_{i}.pid' for i in range(len(urls))],
-            'log_files': [f'/var/log/restream_field{field_id}_{i}.log' for i in range(len(urls))]
+            'pid_files': [str(SETTINGS.pid_file(field_id, i)) for i in range(len(urls))],
+            'log_files': [str(SETTINGS.log_file(field_id, i)) for i in range(len(urls))]
         }
     return fields
 
 def start_restream(field_id, url_index=None):
     """Запускает рестрим для указанного поля (одного URL или всех)"""
     try:
+        SETTINGS.ensure_runtime_directories()
         fields = get_fields()
         
         if field_id not in fields:
@@ -161,8 +160,8 @@ def start_restream(field_id, url_index=None):
             if not url:
                 continue
             
-            pid_file = f'/tmp/restream_field{field_id}_{idx}.pid'
-            log_file = f'/var/log/restream_field{field_id}_{idx}.log'
+            pid_file = SETTINGS.pid_file(field_id, idx)
+            log_file = SETTINGS.log_file(field_id, idx)
             
             # Проверяем что уже не запущен
             status = get_process_status(pid_file)
@@ -171,7 +170,7 @@ def start_restream(field_id, url_index=None):
             
             # Команда FFmpeg
             cmd = [
-                '/usr/bin/ffmpeg',
+                str(SETTINGS.ffmpeg_bin),
                 '-hide_banner',
                 '-loglevel', 'warning',
                 '-nostats',
@@ -259,7 +258,7 @@ def stop_restream(field_id, url_index=None):
         stopped = []
         
         for idx in indices:
-            pid_file = f'/tmp/restream_field{field_id}_{idx}.pid'
+            pid_file = SETTINGS.pid_file(field_id, idx)
             status = get_process_status(pid_file)
             
             if status['status'] != 'running':
@@ -298,8 +297,8 @@ def index():
         # Статусы для каждого URL
         url_statuses = []
         for idx, url in enumerate(field['urls']):
-            pid_file = f'/tmp/restream_field{field_id}_{idx}.pid'
-            log_file = f'/var/log/restream_field{field_id}_{idx}.log'
+            pid_file = SETTINGS.pid_file(field_id, idx)
+            log_file = SETTINGS.log_file(field_id, idx)
             status = get_process_status(pid_file)
             delay_info = get_delay_info(log_file)
             url_statuses.append({
@@ -373,7 +372,7 @@ def api_restart_specific(field_id, url_index):
 @app.route('/api/logs/<int:field_id>/<int:url_index>')
 def api_logs_specific(field_id, url_index):
     """API: получить логи для конкретного URL"""
-    log_file = f'/var/log/restream_field{field_id}_{url_index}.log'
+    log_file = SETTINGS.log_file(field_id, url_index)
     if not os.path.exists(log_file):
         return jsonify({'logs': []})
     
@@ -473,7 +472,7 @@ def api_update_restream_url(field_id, url_index):
             return jsonify({'success': False, 'message': 'Invalid URL index'}), 400
         
         # Останавливаем рестрим для этого URL если он запущен
-        pid_file = f'/tmp/restream_field{field_id}_{url_index}.pid'
+        pid_file = SETTINGS.pid_file(field_id, url_index)
         status = get_process_status(pid_file)
         if status['status'] == 'running':
             try:
@@ -515,7 +514,7 @@ def api_delete_restream_url(field_id, url_index):
             return jsonify({'success': False, 'message': 'Invalid URL index'}), 400
         
         # Останавливаем рестрим если запущен
-        pid_file = f'/tmp/restream_field{field_id}_{url_index}.pid'
+        pid_file = SETTINGS.pid_file(field_id, url_index)
         status = get_process_status(pid_file)
         if status['status'] == 'running':
             try:
@@ -532,10 +531,10 @@ def api_delete_restream_url(field_id, url_index):
         
         # Переименовываем PID и лог файлы для оставшихся URL
         for i in range(url_index, len(field['restream_urls'])):
-            old_pid = f'/tmp/restream_field{field_id}_{i+1}.pid'
-            new_pid = f'/tmp/restream_field{field_id}_{i}.pid'
-            old_log = f'/var/log/restream_field{field_id}_{i+1}.log'
-            new_log = f'/var/log/restream_field{field_id}_{i}.log'
+            old_pid = SETTINGS.pid_file(field_id, i + 1)
+            new_pid = SETTINGS.pid_file(field_id, i)
+            old_log = SETTINGS.log_file(field_id, i + 1)
+            new_log = SETTINGS.log_file(field_id, i)
             
             if os.path.exists(old_pid):
                 os.rename(old_pid, new_pid)
@@ -578,7 +577,7 @@ def api_config_fields():
             'name': field.get('name') or f'Площадка {field_id}',
             'emoji': field.get('emoji') or '🏟️',
             'rtmp_url': (
-                f'rtmp://{PUBLIC_HOST}/'
+                f'rtmp://{SETTINGS.public_host}/'
                 f'place{field_id}/{stream_key}'
             ),
             'hls_url': f'/hls/place{field_id}/{stream_key}.m3u8',
@@ -601,7 +600,7 @@ def api_config_fields_status():
         field_data = config.get('fields', {}).get(str(i), {})
         stream_key = field_data.get('stream_key', f'stream{i}')
         
-        place_dir = os.path.join(HLS_ROOT, f"place{i}")
+        place_dir = SETTINGS.hls_root / f"place{i}"
         m3u8_file = f"{place_dir}/{stream_key}.m3u8"
         
         if not os.path.exists(m3u8_file):
@@ -636,7 +635,7 @@ def api_config_fields_all():
     for k, v in config.get('fields', {}).items():
         field_copy = v.copy()
         stream_key = v.get('stream_key', f'stream{k}')
-        field_copy['rtmp_url'] = f"rtmp://{PUBLIC_HOST}/place{k}/{stream_key}"
+        field_copy['rtmp_url'] = f"rtmp://{SETTINGS.public_host}/place{k}/{stream_key}"
         field_copy['hls_url'] = f"/hls/place{k}/{stream_key}.m3u8"
         field_copy['stream_key'] = stream_key
         all_fields[k] = field_copy
@@ -672,7 +671,7 @@ def api_config_create_field():
             'name': data.get('name', f'Field {new_id}'),
             'emoji': data.get('emoji', '🏟️'),
             'stream_key': stream_key,
-            'rtmp_url': f"rtmp://{PUBLIC_HOST}/place{new_id}/{stream_key}",
+            'rtmp_url': f"rtmp://{SETTINGS.public_host}/place{new_id}/{stream_key}",
             'hls_url': f"/hls/place{new_id}/{stream_key}.m3u8",
             'enabled': data.get('enabled', True),
             'key': random_key
@@ -714,7 +713,7 @@ def api_config_update_field(field_id):
                 # Если stream_key изменился, обновляем URL
                 if new_stream_key != old_stream_key:
                     field['stream_key'] = new_stream_key
-                    field['rtmp_url'] = f"rtmp://{PUBLIC_HOST}/place{field_id}/{new_stream_key}"
+                    field['rtmp_url'] = f"rtmp://{SETTINGS.public_host}/place{field_id}/{new_stream_key}"
                     field['hls_url'] = f"/hls/place{field_id}/{new_stream_key}.m3u8"
         
         save_config(config)

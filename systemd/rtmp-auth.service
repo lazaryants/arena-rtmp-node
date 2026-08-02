@@ -5,8 +5,10 @@ After=network.target
 [Service]
 Type=simple
 User=root
-Environment="CRICKET_RTMP_CONFIG=/opt/restream-config.json"
-ExecStart=/usr/bin/python3 /opt/rtmp_auth.py
+WorkingDirectory=/opt/cricket-rtmp-node
+Environment="CRICKET_RTMP_ROOT=/opt/cricket-rtmp-node"
+EnvironmentFile=-/opt/cricket-rtmp-node/config/node.env
+ExecStart=/opt/cricket-rtmp-node/.venv/bin/python -m app.rtmp_auth
 Restart=always
 RestartSec=10
 

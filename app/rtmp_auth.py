@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 import hmac
 import json
-import os
 import re
 from http.server import (
     BaseHTTPRequestHandler,
     ThreadingHTTPServer,
 )
-from pathlib import Path
 from urllib.parse import parse_qs
 
-CONFIG_FILE = Path(os.environ.get(
-    "CRICKET_RTMP_CONFIG",
-    "/opt/restream-config.json",
-))
+try:
+    from .settings import SETTINGS
+except ImportError:
+    from settings import SETTINGS
+
+CONFIG_FILE = SETTINGS.config_file
 MAX_BODY_SIZE = 65536
 PLACE_RE = re.compile(r"place([1-9]|1[0-6])")
 

@@ -5,13 +5,11 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/restream-app
-Environment="PATH=/opt/restream-env/bin"
-Environment="CRICKET_RTMP_APP_DIR=/opt/restream-app"
-Environment="CRICKET_RTMP_CONFIG=/opt/restream-config.json"
-Environment="CRICKET_RTMP_PUBLIC_HOST=rtmp.cricket-stream.icu"
-Environment="CRICKET_RTMP_HLS_ROOT=/var/www/hls"
-ExecStart=/opt/restream-env/bin/python /opt/restream_manager.py
+WorkingDirectory=/opt/cricket-rtmp-node
+Environment="PATH=/opt/cricket-rtmp-node/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+Environment="CRICKET_RTMP_ROOT=/opt/cricket-rtmp-node"
+EnvironmentFile=-/opt/cricket-rtmp-node/config/node.env
+ExecStart=/opt/cricket-rtmp-node/.venv/bin/python -m app.restream_manager
 Restart=always
 RestartSec=10
 

@@ -15,13 +15,15 @@
 
 | Назначение | Путь |
 |---|---|
-| приложение | `/opt/restream-app` |
-| менеджер | `/opt/restream_manager.py` |
-| auth callback | `/opt/rtmp_auth.py` |
-| секретная конфигурация | `/opt/restream-config.json` |
+| корень проекта | `/opt/cricket-rtmp-node` |
+| Python environment | `/opt/cricket-rtmp-node/.venv` |
+| параметры узла | `/opt/cricket-rtmp-node/config/node.env` |
+| секретная конфигурация | `/opt/cricket-rtmp-node/config/restream-config.json` |
+| PID-файлы | `/opt/cricket-rtmp-node/run` |
+| журналы ретрансляций | `/opt/cricket-rtmp-node/logs` |
 | HLS | `/var/www/hls` |
 
-Пути приложения, конфигурации, HLS и публичный hostname можно переопределить переменными `CRICKET_RTMP_*` в unit-файлах.
+Основной путь задаётся через `CRICKET_RTMP_ROOT`. Остальные значения можно переопределить в `config/node.env`; unit-файлы менять для этого не требуется.
 
 ## Доменные имена
 
@@ -31,11 +33,12 @@
 
 ## Обязательные меры
 
-1. Скопировать `config/restream-config.example.json` вне репозитория и заменить все ключи.
-2. Установить владельца `root:root` и режим `600` для реальной конфигурации.
-3. Настроить DNS, список `server_name` и TLS-пути в Nginx.
-4. Защитить административные маршруты Basic Auth.
-5. Выполнить `nginx -t` до reload.
-6. Включать `on_publish` по одной неактивной площадке и проверять неправильный и правильный ключ реальной RTMP-публикацией.
+1. Скопировать `config/node.env.example` в `config/node.env` и проверить параметры узла.
+2. Скопировать `config/restream-config.example.json` в `config/restream-config.json` и заменить все ключи.
+3. Установить владельца `root:root` и режим `600` для обоих реальных конфигурационных файлов.
+4. Настроить DNS, список `server_name` и TLS-пути в Nginx.
+5. Защитить административные маршруты Basic Auth.
+6. Выполнить `nginx -t` до reload.
+7. Включать `on_publish` по одной неактивной площадке и проверять неправильный и правильный ключ реальной RTMP-публикацией.
 
 Нельзя заменять конфигурацию действующего сервера напрямую файлами из репозитория без предварительного diff и резервной копии.

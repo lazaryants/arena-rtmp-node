@@ -1,6 +1,7 @@
 # Безопасность
 
-- Реальный `restream-config.json` содержит publish keys и RTMP destinations; режим файла должен быть `600`.
+- Реальный `config/restream-config.json` содержит publish keys и RTMP destinations; режим файла должен быть `600`.
+- `config/node.env` также должен иметь режим `600`, чтобы будущие закрытые параметры не становились общедоступными.
 - RTMP URL и ключи нельзя писать в журналы. Manager маскирует RTMP URL при записи и выдаче логов.
 - Auth callback слушает только `127.0.0.1` и сравнивает ключи через `hmac.compare_digest`.
 - XML RTMP stat слушает только `127.0.0.1`.

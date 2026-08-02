@@ -4,5 +4,8 @@ __pycache__/
 venv/
 *.log
 restream-config.json
+config/restream-config.json
+run/
+logs/
 .env
 .DS_Store
