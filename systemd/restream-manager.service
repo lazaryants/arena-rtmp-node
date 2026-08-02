@@ -9,7 +9,7 @@ WorkingDirectory=/opt/restream-app
 Environment="PATH=/opt/restream-env/bin"
 Environment="CRICKET_RTMP_APP_DIR=/opt/restream-app"
 Environment="CRICKET_RTMP_CONFIG=/opt/restream-config.json"
-Environment="CRICKET_RTMP_PUBLIC_HOST=video.curling76.ru"
+Environment="CRICKET_RTMP_PUBLIC_HOST=rtmp.cricket-stream.icu"
 Environment="CRICKET_RTMP_HLS_ROOT=/var/www/hls"
 ExecStart=/opt/restream-env/bin/python /opt/restream_manager.py
 Restart=always

@@ -11,7 +11,7 @@ import secrets
 from datetime import datetime
 
 APP_DIR = os.environ.get('CRICKET_RTMP_APP_DIR', '/opt/restream-app')
-PUBLIC_HOST = os.environ.get('CRICKET_RTMP_PUBLIC_HOST', 'video.curling76.ru')
+PUBLIC_HOST = os.environ.get('CRICKET_RTMP_PUBLIC_HOST', 'rtmp.cricket-stream.icu')
 HLS_ROOT = os.environ.get('CRICKET_RTMP_HLS_ROOT', '/var/www/hls')
 
 app = Flask(
