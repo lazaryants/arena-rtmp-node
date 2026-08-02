@@ -47,6 +47,29 @@ class Settings:
             "http://127.0.0.1:8090/stat",
         ),
     )
+    auth_bind: str = field(
+        default_factory=lambda: os.environ.get(
+            "CRICKET_RTMP_AUTH_BIND",
+            "127.0.0.1:8080",
+        ),
+    )
+
+    @property
+    def auth_address(self):
+        host, separator, port_text = self.auth_bind.rpartition(":")
+        if not separator or not host:
+            raise ValueError("CRICKET_RTMP_AUTH_BIND must use host:port")
+        try:
+            port = int(port_text)
+        except ValueError as error:
+            raise ValueError(
+                "CRICKET_RTMP_AUTH_BIND port must be an integer"
+            ) from error
+        if not 1 <= port <= 65535:
+            raise ValueError(
+                "CRICKET_RTMP_AUTH_BIND port must be between 1 and 65535"
+            )
+        return host, port
 
     @property
     def app_dir(self):

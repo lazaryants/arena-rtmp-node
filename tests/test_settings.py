@@ -29,6 +29,7 @@ class SettingsTests(unittest.TestCase):
             "CRICKET_RTMP_RUN_DIR": "/run/node",
             "CRICKET_RTMP_LOG_DIR": "/var/log/node",
             "CRICKET_RTMP_PUBLIC_HOST": "ingest.example.test",
+            "CRICKET_RTMP_AUTH_BIND": "127.0.0.1:18080",
         }
         with patch.dict(os.environ, environment, clear=True):
             settings = Settings()
@@ -36,6 +37,29 @@ class SettingsTests(unittest.TestCase):
             self.assertEqual(settings.run_dir, Path("/run/node"))
             self.assertEqual(settings.log_dir, Path("/var/log/node"))
             self.assertEqual(settings.public_host, "ingest.example.test")
+            self.assertEqual(settings.auth_address, ("127.0.0.1", 18080))
+
+    def test_auth_bind_defaults_to_loopback_port_8080(self):
+        with patch.dict(os.environ, {}, clear=True):
+            settings = Settings()
+            self.assertEqual(settings.auth_address, ("127.0.0.1", 8080))
+
+    def test_auth_bind_rejects_invalid_values(self):
+        for value in (
+            "127.0.0.1",
+            ":8080",
+            "127.0.0.1:not-a-port",
+            "127.0.0.1:0",
+            "127.0.0.1:65536",
+        ):
+            with self.subTest(value=value):
+                with patch.dict(
+                    os.environ,
+                    {"CRICKET_RTMP_AUTH_BIND": value},
+                    clear=True,
+                ):
+                    with self.assertRaises(ValueError):
+                        Settings().auth_address
 
 
 if __name__ == "__main__":

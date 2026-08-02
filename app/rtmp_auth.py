@@ -195,13 +195,15 @@ class AuthHandler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    auth_address = SETTINGS.auth_address
     server = ThreadingHTTPServer(
-        ("127.0.0.1", 8080),
+        auth_address,
         AuthHandler,
     )
 
     print(
-        "RTMP Auth v2 listening on 127.0.0.1:8080",
+        "RTMP Auth v2 listening on "
+        f"{auth_address[0]}:{auth_address[1]}",
         flush=True,
     )
 
