@@ -7,5 +7,7 @@ restream-config.json
 config/restream-config.json
 run/
 logs/
+build/
+config/nginx-render.json
 .env
 .DS_Store

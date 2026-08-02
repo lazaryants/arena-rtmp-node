@@ -33,6 +33,20 @@ Restream Manager запускается через Gunicorn на `127.0.0.1:5000
 
 Если web-интерфейсу понадобится отдельное имя, например `node.cricket-stream.icu`, его можно добавить в `server_name` Nginx и в TLS-сертификат. Python-код менять для этого не требуется. Значение `CRICKET_RTMP_PUBLIC_HOST` определяет только адрес, который показывается пользователю как RTMP ingest URL.
 
+## Генерация Nginx-конфигурации
+
+Профиль конкретного сервера не хранится в Git:
+
+```bash
+cp config/nginx-render.example.json config/nginx-render.json
+chmod 600 config/nginx-render.json
+python3 scripts/render_nginx.py \
+    --profile config/nginx-render.json \
+    --output-dir build/nginx
+```
+
+Renderer создаёт только staging-файлы и ничего не устанавливает. Перед применением их необходимо сравнить с действующей конфигурацией. RTMP-фрагмент подключается на корневом уровне `nginx.conf`, HTTP и stat-фрагменты — внутри `http` через стандартный `conf.d`.
+
 ## Обязательные меры
 
 Сначала можно выполнить read-only проверку зависимостей:

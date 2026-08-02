@@ -69,3 +69,12 @@ sudo ./scripts/install.sh check
 ```bash
 sudo ./scripts/install.sh install
 ```
+
+Серверные Nginx-конфигурации создаются из отдельного профиля и только в staging-каталог:
+
+```bash
+cp config/nginx-render.example.json config/nginx-render.json
+python3 scripts/render_nginx.py \
+    --profile config/nginx-render.json \
+    --output-dir build/nginx
+```

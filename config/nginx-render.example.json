@@ -1,0 +1,16 @@
+{
+    "server_names": [
+        "rtmp.cricket-stream.icu"
+    ],
+    "tls_certificate": "/etc/letsencrypt/live/rtmp.cricket-stream.icu/fullchain.pem",
+    "tls_certificate_key": "/etc/letsencrypt/live/rtmp.cricket-stream.icu/privkey.pem",
+    "web_root": "/opt/cricket-rtmp-node/web",
+    "hls_root": "/var/www/hls",
+    "basic_auth_file": "/etc/nginx/.htpasswd",
+    "manager_upstream": "127.0.0.1:5000",
+    "rtmp_port": 1935,
+    "auth_callback": "http://127.0.0.1:8080/auth",
+    "auth_places": [
+        15
+    ]
+}
