@@ -17,7 +17,7 @@ class SettingsTests(unittest.TestCase):
             ):
                 settings = Settings()
                 root = Path(directory)
-                self.assertEqual(settings.config_file, root / "config/restream-config.json")
+                self.assertEqual(settings.config_file, root / "state/restream-config.json")
                 self.assertEqual(settings.run_dir, root / "run")
                 self.assertEqual(settings.log_dir, root / "logs")
                 self.assertEqual(settings.template_dir, root / "app/templates")

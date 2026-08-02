@@ -12,6 +12,7 @@
 - несколько исходящих RTMP-ретрансляций через FFmpeg с `-c copy`;
 - административный web-интерфейс;
 - production-запуск Restream Manager через Gunicorn;
+- отдельный непривилегированный service user и systemd sandbox;
 - локальная XML-статистика Nginx-RTMP на `127.0.0.1:8090/stat`;
 - безопасные health и metrics API для внешнего мониторинга;
 - маскирование RTMP URL в журналах.
@@ -39,9 +40,10 @@
 ```text
 /opt/cricket-rtmp-node/
 ├── app/       # Python-приложение
-├── config/    # node.env и закрытая конфигурация потоков
+├── config/    # root-owned параметры запуска и примеры
 ├── logs/      # журналы исходящих ретрансляций
 ├── run/       # PID-файлы
+├── state/     # изменяемая конфигурация потоков
 ├── web/       # статический интерфейс
 └── .venv/     # Python environment
 ```

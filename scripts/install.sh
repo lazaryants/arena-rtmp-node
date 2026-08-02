@@ -15,6 +15,7 @@ Options:
   --target PATH             Installation root (default: /opt/cricket-rtmp-node)
   --skip-python-deps        Create .venv but do not run pip install
   --skip-system-check       Skip checks for Nginx, RTMP module and FFmpeg
+  --skip-service-user       Do not create/chown to cricket-rtmp (test packaging only)
   -h, --help                Show this help
 
 The installer never modifies /etc/nginx, /etc/systemd/system, DNS or TLS.
@@ -81,6 +82,7 @@ install_project() {
     local target="$1"
     local skip_python_deps="$2"
     local skip_system_check="$3"
+    local skip_service_user="$4"
     local target_parent staging target_created=0
 
     if [[ "${EUID}" -ne 0 ]]; then
@@ -127,14 +129,15 @@ install_project() {
     install -d -m 0700 -- \
         "${staging}/config" \
         "${staging}/logs" \
-        "${staging}/run"
+        "${staging}/run" \
+        "${staging}/state"
 
     install -m 0600 -- \
         "${staging}/config/node.env.example" \
         "${staging}/config/node.env"
     install -m 0600 -- \
         "${staging}/config/restream-config.example.json" \
-        "${staging}/config/restream-config.json"
+        "${staging}/state/restream-config.json"
 
     touch "${staging}/.cricket-rtmp-node-installing"
     chmod 0644 "${staging}/.cricket-rtmp-node-installing"
@@ -152,6 +155,33 @@ install_project() {
             -r "${target}/requirements.txt"
     fi
 
+    if [[ "${skip_service_user}" != "1" ]]; then
+        if ! getent group cricket-rtmp >/dev/null 2>&1; then
+            groupadd --system cricket-rtmp
+        fi
+        if ! id -u cricket-rtmp >/dev/null 2>&1; then
+            useradd \
+                --system \
+                --gid cricket-rtmp \
+                --home-dir "${target}" \
+                --no-create-home \
+                --shell /usr/sbin/nologin \
+                cricket-rtmp
+        fi
+
+        chown root:cricket-rtmp "${target}/config"
+        chmod 0750 "${target}/config"
+        chown root:cricket-rtmp "${target}/config/node.env"
+        chmod 0640 "${target}/config/node.env"
+        chown cricket-rtmp:cricket-rtmp \
+            "${target}/state" \
+            "${target}/state/restream-config.json" \
+            "${target}/logs" \
+            "${target}/run"
+        chmod 0600 "${target}/state/restream-config.json"
+        chmod 0700 "${target}/state" "${target}/logs" "${target}/run"
+    fi
+
     unlink "${target}/.cricket-rtmp-node-installing"
     touch "${target}/.cricket-rtmp-node-managed"
     chmod 0644 "${target}/.cricket-rtmp-node-managed"
@@ -163,8 +193,9 @@ install_project() {
     echo
     echo "Next manual checks:"
     echo "  1. Edit ${target}/config/node.env"
-    echo "  2. Replace every CHANGE_ME_* in ${target}/config/restream-config.json"
-    echo "  3. Keep both files owned by root with mode 600"
+    echo "  2. Replace every CHANGE_ME_* in ${target}/state/restream-config.json"
+    echo "  3. Verify node.env is root:cricket-rtmp/640"
+    echo "  4. Verify state/restream-config.json is cricket-rtmp:cricket-rtmp/600"
 }
 
 main() {
@@ -172,6 +203,7 @@ main() {
     local target="${DEFAULT_TARGET}"
     local skip_python_deps=0
     local skip_system_check=0
+    local skip_service_user=0
 
     if [[ -z "${action}" || "${action}" == "-h" || "${action}" == "--help" ]]; then
         usage
@@ -197,6 +229,10 @@ main() {
                 skip_system_check=1
                 shift
                 ;;
+            --skip-service-user)
+                skip_service_user=1
+                shift
+                ;;
             -h|--help)
                 usage
                 return 0
@@ -217,7 +253,8 @@ main() {
             install_project \
                 "${target}" \
                 "${skip_python_deps}" \
-                "${skip_system_check}"
+                "${skip_system_check}" \
+                "${skip_service_user}"
             ;;
         *)
             echo "ERROR: expected 'check' or 'install'" >&2

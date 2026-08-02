@@ -4,13 +4,32 @@ After=network.target
 
 [Service]
 Type=simple
-User=root
+User=cricket-rtmp
+Group=cricket-rtmp
 WorkingDirectory=/opt/cricket-rtmp-node
 Environment="CRICKET_RTMP_ROOT=/opt/cricket-rtmp-node"
+Environment="PYTHONDONTWRITEBYTECODE=1"
 EnvironmentFile=-/opt/cricket-rtmp-node/config/node.env
 ExecStart=/opt/cricket-rtmp-node/.venv/bin/python -m app.rtmp_auth
 Restart=always
 RestartSec=10
+UMask=0077
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
 
 [Install]
 WantedBy=multi-user.target

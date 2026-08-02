@@ -60,7 +60,7 @@ class Settings:
     def config_file(self):
         configured = os.environ.get("CRICKET_RTMP_CONFIG")
         return Path(configured) if configured else (
-            self.project_root / "config" / "restream-config.json"
+            self.project_root / "state" / "restream-config.json"
         )
 
     @property

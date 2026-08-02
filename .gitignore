@@ -5,6 +5,7 @@ venv/
 *.log
 restream-config.json
 config/restream-config.json
+state/
 run/
 logs/
 build/

@@ -18,7 +18,7 @@
 | корень проекта | `/opt/cricket-rtmp-node` |
 | Python environment | `/opt/cricket-rtmp-node/.venv` |
 | параметры узла | `/opt/cricket-rtmp-node/config/node.env` |
-| секретная конфигурация | `/opt/cricket-rtmp-node/config/restream-config.json` |
+| изменяемая конфигурация | `/opt/cricket-rtmp-node/state/restream-config.json` |
 | PID-файлы | `/opt/cricket-rtmp-node/run` |
 | журналы ретрансляций | `/opt/cricket-rtmp-node/logs` |
 | HLS | `/var/www/hls` |
@@ -26,6 +26,8 @@
 Основной путь задаётся через `CRICKET_RTMP_ROOT`. Остальные значения можно переопределить в `config/node.env`; unit-файлы менять для этого не требуется.
 
 Restream Manager запускается через Gunicorn на `127.0.0.1:5000`. Используется один worker и четыре threads. Увеличивать число workers до архитектурного разделения process supervisor и HTTP API нельзя.
+
+Обе Python-службы запускаются от системного пользователя `cricket-rtmp`. Код, `.venv` и `config/` остаются root-owned и доступны только для чтения. Пользователь сервиса может изменять только `state/`, `logs/` и `run/`.
 
 ## Доменные имена
 
@@ -64,8 +66,8 @@ sudo ./scripts/install.sh install
 Installer откажется перезаписывать существующий `/opt/cricket-rtmp-node`. Обновление действующего узла будет реализовано отдельным скриптом с резервной копией и rollback.
 
 1. Скопировать `config/node.env.example` в `config/node.env` и проверить параметры узла.
-2. Скопировать `config/restream-config.example.json` в `config/restream-config.json` и заменить все ключи.
-3. Установить владельца `root:root` и режим `600` для обоих реальных конфигурационных файлов.
+2. Скопировать `config/restream-config.example.json` в `state/restream-config.json` и заменить все ключи.
+3. Проверить владельцев и права: `node.env` — `root:cricket-rtmp`/`640`, рабочий JSON — `cricket-rtmp:cricket-rtmp`/`600`.
 4. Настроить DNS, список `server_name` и TLS-пути в Nginx.
 5. Защитить административные маршруты Basic Auth.
 6. Выполнить `nginx -t` до reload.
