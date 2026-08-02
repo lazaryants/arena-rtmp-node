@@ -10,8 +10,10 @@ from urllib.parse import parse_qs
 
 try:
     from .settings import SETTINGS
+    from .config_store import load_and_validate_config
 except ImportError:
     from settings import SETTINGS
+    from config_store import load_and_validate_config
 
 CONFIG_FILE = SETTINGS.config_file
 MAX_BODY_SIZE = 65536
@@ -19,13 +21,7 @@ PLACE_RE = re.compile(r"place([1-9]|1[0-6])")
 
 
 def load_config():
-    with CONFIG_FILE.open("r", encoding="utf-8") as file:
-        config = json.load(file)
-
-    if not isinstance(config, dict):
-        raise ValueError("Invalid configuration root")
-
-    return config
+    return load_and_validate_config(CONFIG_FILE)
 
 
 def safe_label(value):

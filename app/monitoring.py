@@ -14,17 +14,18 @@ try:
 except ImportError:
     from version import __version__
 
+try:
+    from .config_store import load_and_validate_config
+except ImportError:
+    from config_store import load_and_validate_config
+
 
 def timestamp_utc():
     return datetime.now(timezone.utc).isoformat()
 
 
 def read_config(config_file):
-    with config_file.open("r", encoding="utf-8") as file:
-        config = json.load(file)
-    if not isinstance(config, dict) or not isinstance(config.get("fields", {}), dict):
-        raise ValueError("invalid configuration structure")
-    return config
+    return load_and_validate_config(config_file)
 
 
 def hls_snapshot(settings, config, now=None):

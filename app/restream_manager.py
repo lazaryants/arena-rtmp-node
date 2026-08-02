@@ -9,13 +9,16 @@ import time
 import psutil
 import secrets
 from datetime import datetime
+from functools import wraps
 
 try:
     from .settings import SETTINGS
     from .monitoring import health_snapshot, metrics_snapshot
+    from .config_store import ConfigStore, ConfigValidationError
 except ImportError:
     from settings import SETTINGS
     from monitoring import health_snapshot, metrics_snapshot
+    from config_store import ConfigStore, ConfigValidationError
 
 app = Flask(
     __name__,
@@ -24,6 +27,7 @@ app = Flask(
 
 # ===== КОНФИГУРАЦИЯ =====
 CONFIG_FILE = SETTINGS.config_file
+CONFIG_STORE = ConfigStore(CONFIG_FILE)
 
 RTMP_URL_PATTERN = re.compile(
     r"rtmps?://\S+",
@@ -49,6 +53,15 @@ def api_node_metrics():
         }), 503
 
 
+@app.errorhandler(ConfigValidationError)
+def handle_invalid_stored_config(error):
+    """Do not expose config contents when the stored file is invalid."""
+    return jsonify({
+        'success': False,
+        'message': 'Node configuration is invalid',
+    }), 503
+
+
 def redact_rtmp_urls(value):
     """Удаляет RTMP URL и ключи из диагностики."""
     return RTMP_URL_PATTERN.sub(
@@ -59,17 +72,21 @@ def redact_rtmp_urls(value):
 
 
 def load_config():
-    """Загружает конфигурацию из файла"""
-    try:
-        with open(CONFIG_FILE, 'r') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {"fields": {}}
+    """Load and validate the complete node configuration."""
+    return CONFIG_STORE.load()
 
 def save_config(config):
-    """Сохраняет конфигурацию в файл"""
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=4)
+    """Validate and atomically replace the node configuration."""
+    return CONFIG_STORE.save(config)
+
+
+def serialized_config_write(function):
+    """Prevent concurrent admin requests from losing configuration updates."""
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        with CONFIG_STORE.locked():
+            return function(*args, **kwargs)
+    return wrapped
 
 def get_process_status(pid_file):
     """Проверяет статус процесса по PID файлу"""
@@ -410,6 +427,7 @@ def api_logs_specific(field_id, url_index):
 # ===== RESTREAM URLS API =====
 
 @app.route('/api/restream-urls/<int:field_id>', methods=['GET'])
+@serialized_config_write
 def api_get_restream_urls(field_id):
     """API: получить список URL для рестрима"""
     config = load_config()
@@ -432,6 +450,7 @@ def api_get_restream_urls(field_id):
 
 
 @app.route('/api/restream-urls/<int:field_id>', methods=['POST'])
+@serialized_config_write
 def api_add_restream_url(field_id):
     """API: добавить новый URL для рестрима"""
     try:
@@ -463,11 +482,14 @@ def api_add_restream_url(field_id):
             'message': 'URL added',
             'index': len(field['restream_urls']) - 1
         })
+    except ConfigValidationError as error:
+        return jsonify({'success': False, 'message': str(error)}), 400
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
 @app.route('/api/restream-urls/<int:field_id>/<int:url_index>', methods=['PUT'])
+@serialized_config_write
 def api_update_restream_url(field_id, url_index):
     """API: обновить URL для рестрима"""
     try:
@@ -508,11 +530,14 @@ def api_update_restream_url(field_id, url_index):
         save_config(config)
         
         return jsonify({'success': True, 'message': 'URL updated'})
+    except ConfigValidationError as error:
+        return jsonify({'success': False, 'message': str(error)}), 400
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
 @app.route('/api/restream-urls/<int:field_id>/<int:url_index>', methods=['DELETE'])
+@serialized_config_write
 def api_delete_restream_url(field_id, url_index):
     """API: удалить URL для рестрима"""
     try:
@@ -564,6 +589,8 @@ def api_delete_restream_url(field_id, url_index):
         save_config(config)
         
         return jsonify({'success': True, 'message': 'URL deleted'})
+    except ConfigValidationError as error:
+        return jsonify({'success': False, 'message': str(error)}), 400
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
@@ -664,6 +691,7 @@ def api_config_fields_all():
 
 
 @app.route('/api/config/fields', methods=['POST'])
+@serialized_config_write
 def api_config_create_field():
     """API: создать новое поле (использует слоты 1-16)"""
     try:
@@ -699,11 +727,14 @@ def api_config_create_field():
         
         save_config(config)
         return jsonify({'success': True, 'id': new_id, 'message': f'Field created in slot {new_id}'})
+    except ConfigValidationError as error:
+        return jsonify({'success': False, 'message': str(error)}), 400
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
 @app.route('/api/config/fields/<field_id>', methods=['PUT'])
+@serialized_config_write
 def api_config_update_field(field_id):
     """API: обновить поле"""
     try:
@@ -738,11 +769,14 @@ def api_config_update_field(field_id):
         
         save_config(config)
         return jsonify({'success': True, 'message': 'Field updated'})
+    except ConfigValidationError as error:
+        return jsonify({'success': False, 'message': str(error)}), 400
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
 @app.route('/api/config/fields/<field_id>', methods=['DELETE'])
+@serialized_config_write
 def api_config_delete_field(field_id):
     """API: удалить поле"""
     try:
@@ -754,5 +788,7 @@ def api_config_delete_field(field_id):
         del config['fields'][field_id]
         save_config(config)
         return jsonify({'success': True, 'message': 'Field deleted'})
+    except ConfigValidationError as error:
+        return jsonify({'success': False, 'message': str(error)}), 400
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
