@@ -43,6 +43,12 @@ class InstallerTests(unittest.TestCase):
                 target / ".venv/bin": 0o755,
                 target / ".venv/bin/python3": 0o755,
                 target / "README.md": 0o644,
+                target / "config/gunicorn.conf.py": 0o644,
+                target / "config/node.env.example": 0o644,
+                target / "config/nginx-render.example.json": 0o644,
+                target / "config/restream-config.example.json": 0o644,
+                target / "config/node.env": 0o600,
+                target / "state/restream-config.json": 0o600,
             }
             for path, expected_mode in expected_modes.items():
                 with self.subTest(path=path):

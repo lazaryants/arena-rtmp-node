@@ -100,7 +100,11 @@ normalize_installed_permissions() {
     chmod 0644 \
         "${target}/.gitignore" \
         "${target}/README.md" \
-        "${target}/requirements.txt"
+        "${target}/requirements.txt" \
+        "${target}/config/gunicorn.conf.py" \
+        "${target}/config/node.env.example" \
+        "${target}/config/nginx-render.example.json" \
+        "${target}/config/restream-config.example.json"
 
     # A venv created under umask 077 is otherwise unreadable by the service
     # user even when its parent directory is accessible.
