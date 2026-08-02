@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
 from flask import Flask, render_template, request, jsonify, redirect, url_for
-import subprocess
 import os
-import signal
 import json
 import re
 import time
 import psutil
 import secrets
-from datetime import datetime
 from functools import wraps
 
 try:
     from .settings import SETTINGS
     from .monitoring import health_snapshot, metrics_snapshot
     from .config_store import ConfigStore, ConfigValidationError
+    from .supervisor_client import SupervisorClient, SupervisorUnavailable
 except ImportError:
     from settings import SETTINGS
     from monitoring import health_snapshot, metrics_snapshot
     from config_store import ConfigStore, ConfigValidationError
+    from supervisor_client import SupervisorClient, SupervisorUnavailable
 
 app = Flask(
     __name__,
@@ -28,6 +27,7 @@ app = Flask(
 # ===== КОНФИГУРАЦИЯ =====
 CONFIG_FILE = SETTINGS.config_file
 CONFIG_STORE = ConfigStore(CONFIG_FILE)
+SUPERVISOR_CLIENT = SupervisorClient(SETTINGS.supervisor_socket)
 
 RTMP_URL_PATTERN = re.compile(
     r"rtmps?://\S+",
@@ -98,7 +98,11 @@ def get_process_status(pid_file):
             pid = int(f.read().strip())
         
         process = psutil.Process(pid)
-        if process.is_running() and process.status() != psutil.STATUS_ZOMBIE:
+        if (
+            process.is_running()
+            and process.status() != psutil.STATUS_ZOMBIE
+            and "ffmpeg" in process.name().lower()
+        ):
             create_time = process.create_time()
             uptime = int(time.time() - create_time)
             cpu_percent = process.cpu_percent(interval=0.1)
@@ -112,9 +116,10 @@ def get_process_status(pid_file):
                 'cpu': cpu_percent,
                 'memory': round(memory_mb, 2)
             }
-    except (psutil.NoSuchProcess, psutil.AccessDenied, ValueError):
-        if os.path.exists(pid_file):
-            os.remove(pid_file)
+    except (OSError, psutil.NoSuchProcess, psutil.AccessDenied, ValueError):
+        # Runtime files belong to the dedicated supervisor. The manager is
+        # deliberately read-only here and must tolerate stale PID files.
+        pass
     
     return {'status': 'stopped', 'pid': None, 'uptime': 0}
 
@@ -169,157 +174,21 @@ def get_fields():
         }
     return fields
 
-def start_restream(field_id, url_index=None):
-    """Запускает рестрим для указанного поля (одного URL или всех)"""
+def supervisor_action(action, field_id, url_index=None):
+    """Send a process-management request without exposing configured URLs."""
     try:
-        SETTINGS.ensure_runtime_directories()
-        fields = get_fields()
-        
-        if field_id not in fields:
-            return False, "Invalid field ID"
-        
-        field = fields[field_id]
-        
-        if not field['urls']:
-            return False, "No URLs configured"
-        
-        # Определяем какие URL запускать
-        if url_index is not None:
-            if url_index >= len(field['urls']):
-                return False, "Invalid URL index"
-            urls_to_start = [(url_index, field['urls'][url_index])]
-        else:
-            urls_to_start = list(enumerate(field['urls']))
-        
-        started = []
-        
-        for idx, url in urls_to_start:
-            if not url:
-                continue
-            
-            pid_file = SETTINGS.pid_file(field_id, idx)
-            log_file = SETTINGS.log_file(field_id, idx)
-            
-            # Проверяем что уже не запущен
-            status = get_process_status(pid_file)
-            if status['status'] == 'running':
-                continue
-            
-            # Команда FFmpeg
-            cmd = [
-                str(SETTINGS.ffmpeg_bin),
-                '-hide_banner',
-                '-loglevel', 'warning',
-                '-nostats',
-                '-i', field['source'],
-                '-c', 'copy',
-                '-f', 'flv',
-                '-flvflags', 'no_duration_filesize',
-                url
-            ]
+        result = SUPERVISOR_CLIENT.request(action, field_id, url_index)
+        return result['success'], result.get('message', 'Supervisor request processed')
+    except (SupervisorUnavailable, ValueError) as error:
+        return False, str(error)
 
-            # Создаём журнал сразу с правами 600.
-            log_fd = os.open(
-                log_file,
-                os.O_WRONLY
-                | os.O_CREAT
-                | os.O_APPEND,
-                0o600,
-            )
-            os.chmod(log_file, 0o600)
 
-            log_fh = os.fdopen(
-                log_fd,
-                'a',
-                encoding='utf-8',
-                buffering=1,
-            )
-
-            try:
-                log_fh.write(
-                    f"\n=== Restream started at "
-                    f"{datetime.now()} ===\n"
-                )
-                log_fh.write(
-                    f"Source: {field['source']}\n"
-                )
-                log_fh.write(
-                    "Destination: [configured]\n"
-                )
-                log_fh.flush()
-
-                process = subprocess.Popen(
-                    cmd,
-                    stdout=log_fh,
-                    stderr=log_fh,
-                    stdin=subprocess.DEVNULL,
-                    bufsize=0,
-                )
-            finally:
-                # FFmpeg уже получил собственные
-                # stdout/stderr descriptors.
-                log_fh.close()
-
-            # Сохраняем PID.
-            with open(pid_file, 'w') as f:
-                f.write(str(process.pid))
-
-            started.append(f"URL #{idx+1} (PID: {process.pid})")
-        
-        if started:
-            return True, f"Started: {', '.join(started)}"
-        else:
-            return False, "Nothing to start (all already running)"
-            
-    except Exception as e:
-        import traceback
-        return False, f"Error: {str(e)}"
+def start_restream(field_id, url_index=None):
+    return supervisor_action('start', field_id, url_index)
 
 
 def stop_restream(field_id, url_index=None):
-    """Останавливает рестрим для указанного поля (одного URL или всех)"""
-    try:
-        fields = get_fields()
-        
-        if field_id not in fields:
-            return False, "Invalid field ID"
-        
-        field = fields[field_id]
-        
-        # Определяем какие URL останавливать
-        if url_index is not None:
-            indices = [url_index]
-        else:
-            indices = list(range(len(field['urls'])))
-        
-        stopped = []
-        
-        for idx in indices:
-            pid_file = SETTINGS.pid_file(field_id, idx)
-            status = get_process_status(pid_file)
-            
-            if status['status'] != 'running':
-                continue
-            
-            try:
-                process = psutil.Process(status['pid'])
-                process.terminate()
-                process.wait(timeout=5)
-                
-                if os.path.exists(pid_file):
-                    os.remove(pid_file)
-                
-                stopped.append(f"URL #{idx+1}")
-            except Exception as e:
-                pass
-        
-        if stopped:
-            return True, f"Stopped: {', '.join(stopped)}"
-        else:
-            return False, "Nothing to stop"
-            
-    except Exception as e:
-        return False, f"Error: {str(e)}"
+    return supervisor_action('stop', field_id, url_index)
 
 
 # ===== СТРАНИЦЫ =====
@@ -361,6 +230,7 @@ def index():
 # ===== RESTREAM API =====
 
 @app.route('/api/start/<int:field_id>', methods=['POST'])
+@serialized_config_write
 def api_start_all(field_id):
     """API: запустить рестрим для ВСЕХ URL поля"""
     success, message = start_restream(field_id, url_index=None)
@@ -368,6 +238,7 @@ def api_start_all(field_id):
 
 
 @app.route('/api/start/<int:field_id>/<int:url_index>', methods=['POST'])
+@serialized_config_write
 def api_start_specific(field_id, url_index):
     """API: запустить рестрим для конкретного URL"""
     success, message = start_restream(field_id, url_index)
@@ -375,6 +246,7 @@ def api_start_specific(field_id, url_index):
 
 
 @app.route('/api/stop/<int:field_id>', methods=['POST'])
+@serialized_config_write
 def api_stop_all(field_id):
     """API: остановить рестрим для ВСЕХ URL поля"""
     success, message = stop_restream(field_id, url_index=None)
@@ -382,6 +254,7 @@ def api_stop_all(field_id):
 
 
 @app.route('/api/stop/<int:field_id>/<int:url_index>', methods=['POST'])
+@serialized_config_write
 def api_stop_specific(field_id, url_index):
     """API: остановить рестрим для конкретного URL"""
     success, message = stop_restream(field_id, url_index)
@@ -389,20 +262,18 @@ def api_stop_specific(field_id, url_index):
 
 
 @app.route('/api/restart/<int:field_id>', methods=['POST'])
+@serialized_config_write
 def api_restart_all(field_id):
     """API: перезапустить рестрим для ВСЕХ URL поля"""
-    stop_restream(field_id, url_index=None)
-    time.sleep(1)
-    success, message = start_restream(field_id, url_index=None)
+    success, message = supervisor_action('restart', field_id, url_index=None)
     return jsonify({'success': success, 'message': message})
 
 
 @app.route('/api/restart/<int:field_id>/<int:url_index>', methods=['POST'])
+@serialized_config_write
 def api_restart_specific(field_id, url_index):
     """API: перезапустить рестрим для конкретного URL"""
-    stop_restream(field_id, url_index)
-    time.sleep(1)
-    success, message = start_restream(field_id, url_index)
+    success, message = supervisor_action('restart', field_id, url_index)
     return jsonify({'success': success, 'message': message})
 
 
@@ -513,18 +384,9 @@ def api_update_restream_url(field_id, url_index):
         if url_index >= len(field['restream_urls']):
             return jsonify({'success': False, 'message': 'Invalid URL index'}), 400
         
-        # Останавливаем рестрим для этого URL если он запущен
-        pid_file = SETTINGS.pid_file(field_id, url_index)
-        status = get_process_status(pid_file)
-        if status['status'] == 'running':
-            try:
-                process = psutil.Process(status['pid'])
-                process.terminate()
-                process.wait(timeout=5)
-                if os.path.exists(pid_file):
-                    os.remove(pid_file)
-            except:
-                pass
+        success, message = stop_restream(field_id, url_index)
+        if not success:
+            return jsonify({'success': False, 'message': message}), 503
         
         field['restream_urls'][url_index] = new_url
         save_config(config)
@@ -558,33 +420,14 @@ def api_delete_restream_url(field_id, url_index):
         if url_index >= len(field['restream_urls']):
             return jsonify({'success': False, 'message': 'Invalid URL index'}), 400
         
-        # Останавливаем рестрим если запущен
-        pid_file = SETTINGS.pid_file(field_id, url_index)
-        status = get_process_status(pid_file)
-        if status['status'] == 'running':
-            try:
-                process = psutil.Process(status['pid'])
-                process.terminate()
-                process.wait(timeout=5)
-                if os.path.exists(pid_file):
-                    os.remove(pid_file)
-            except:
-                pass
+        success, message = supervisor_action(
+            'delete_destination', field_id, url_index
+        )
+        if not success:
+            return jsonify({'success': False, 'message': message}), 503
         
         # Удаляем URL
         field['restream_urls'].pop(url_index)
-        
-        # Переименовываем PID и лог файлы для оставшихся URL
-        for i in range(url_index, len(field['restream_urls'])):
-            old_pid = SETTINGS.pid_file(field_id, i + 1)
-            new_pid = SETTINGS.pid_file(field_id, i)
-            old_log = SETTINGS.log_file(field_id, i + 1)
-            new_log = SETTINGS.log_file(field_id, i)
-            
-            if os.path.exists(old_pid):
-                os.rename(old_pid, new_pid)
-            if os.path.exists(old_log):
-                os.rename(old_log, new_log)
         
         save_config(config)
         
@@ -785,6 +628,9 @@ def api_config_delete_field(field_id):
         if field_id not in config.get('fields', {}):
             return jsonify({'success': False, 'message': 'Field not found'}), 404
         
+        success, message = stop_restream(int(field_id), url_index=None)
+        if not success:
+            return jsonify({'success': False, 'message': message}), 503
         del config['fields'][field_id]
         save_config(config)
         return jsonify({'success': True, 'message': 'Field deleted'})

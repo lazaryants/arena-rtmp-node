@@ -5,7 +5,8 @@
 1. Источник публикует RTMP в `placeN/streamN`.
 2. Nginx-RTMP при включённом `publish_auth_enabled` вызывает локальный auth callback.
 3. Nginx-RTMP режет принятый поток на live HLS без участия Python.
-4. Restream Manager при необходимости запускает отдельный FFmpeg для каждого назначения с копированием кодеков.
+4. Restream Manager отправляет supervisor только действие и номера площадки/назначения.
+5. Restream Supervisor читает destination из локальной конфигурации и владеет FFmpeg с копированием кодеков.
 
 Python-сервисы не находятся в основном пути RTMP → HLS. Их перезапуск не должен останавливать уже принятый Nginx поток.
 
@@ -15,11 +16,12 @@ Python-сервисы не находятся в основном пути RTMP 
 |---|---|---:|
 | Nginx-RTMP | RTMP ingest и HLS | 1935 |
 | Nginx HTTPS | UI, API proxy, HLS | 443 |
-| Restream Manager | конфигурация и FFmpeg процессы | 5000 |
+| Restream Manager | web API и конфигурация | 5000 |
+| Restream Supervisor | процессы исходящих FFmpeg | Unix socket |
 | RTMP Auth | `on_publish` callback | 8080 |
 | RTMP Stat | локальная XML-статистика | 8090 |
 
-Restream Manager работает через Gunicorn с одним `gthread` worker. Потоки обслуживают параллельные HTTP-запросы, но единственный worker сохраняет одного владельца общей конфигурации и состояния FFmpeg-процессов.
+Restream Manager работает через Gunicorn с одним `gthread` worker. Изменения конфигурации сериализуются файловой блокировкой. Supervisor работает отдельной systemd-службой и принимает по Unix-сокету только фиксированные команды и числовые идентификаторы. Поэтому перезапуск Gunicorn не останавливает активные исходящие FFmpeg.
 
 ## Node API
 

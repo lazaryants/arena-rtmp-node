@@ -1,7 +1,6 @@
 [Unit]
-Description=Cricket Restream Manager
-After=network.target cricket-restream-supervisor.service
-Wants=cricket-restream-supervisor.service
+Description=Cricket RTMP Restream Supervisor
+After=network.target
 
 [Service]
 Type=simple
@@ -12,10 +11,10 @@ Environment="PATH=/opt/cricket-rtmp-node/.venv/bin:/usr/local/sbin:/usr/local/bi
 Environment="CRICKET_RTMP_ROOT=/opt/cricket-rtmp-node"
 Environment="PYTHONDONTWRITEBYTECODE=1"
 EnvironmentFile=-/opt/cricket-rtmp-node/config/node.env
-ExecStart=/opt/cricket-rtmp-node/.venv/bin/gunicorn --config /opt/cricket-rtmp-node/config/gunicorn.conf.py app.wsgi:application
+ExecStart=/opt/cricket-rtmp-node/.venv/bin/python -m app.restream_supervisor
 Restart=always
-RestartSec=10
-TimeoutStopSec=30
+RestartSec=5
+TimeoutStopSec=20
 UMask=0077
 
 NoNewPrivileges=true
@@ -33,7 +32,8 @@ RestrictSUIDSGID=true
 LockPersonality=true
 CapabilityBoundingSet=
 AmbientCapabilities=
-ReadWritePaths=/opt/cricket-rtmp-node/state
+ReadWritePaths=/opt/cricket-rtmp-node/logs
+ReadWritePaths=/opt/cricket-rtmp-node/run
 
 [Install]
 WantedBy=multi-user.target

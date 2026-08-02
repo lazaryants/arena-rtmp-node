@@ -10,6 +10,7 @@
 - формирование live HLS;
 - опциональная авторизация публикации отдельно для каждой площадки;
 - несколько исходящих RTMP-ретрансляций через FFmpeg с `-c copy`;
+- отдельный supervisor исходящих FFmpeg, независимый от web manager;
 - административный web-интерфейс;
 - production-запуск Restream Manager через Gunicorn;
 - отдельный непривилегированный service user и systemd sandbox;
@@ -42,7 +43,7 @@
 ├── app/       # Python-приложение
 ├── config/    # root-owned параметры запуска и примеры
 ├── logs/      # журналы исходящих ретрансляций
-├── run/       # PID-файлы
+├── run/       # PID-файлы и локальный supervisor socket
 ├── state/     # изменяемая конфигурация потоков
 ├── web/       # статический интерфейс
 └── .venv/     # Python environment
@@ -53,7 +54,7 @@ HLS-сегменты остаются в `/var/www/hls`: это временны
 ## Быстрая проверка исходников
 
 ```bash
-python3 -m py_compile app/restream_manager.py app/rtmp_auth.py
+python3 -m py_compile app/*.py
 node --check web/script.js
 python3 -m json.tool config/restream-config.example.json >/dev/null
 python3 -m unittest discover -s tests -v

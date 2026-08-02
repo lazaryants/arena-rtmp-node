@@ -21,13 +21,14 @@
 | изменяемая конфигурация | `/opt/cricket-rtmp-node/state/restream-config.json` |
 | PID-файлы | `/opt/cricket-rtmp-node/run` |
 | журналы ретрансляций | `/opt/cricket-rtmp-node/logs` |
+| Unix socket supervisor | `/opt/cricket-rtmp-node/run/supervisor.sock` |
 | HLS | `/var/www/hls` |
 
 Основной путь задаётся через `CRICKET_RTMP_ROOT`. Остальные значения можно переопределить в `config/node.env`; unit-файлы менять для этого не требуется.
 
-Restream Manager запускается через Gunicorn на `127.0.0.1:5000`. Используется один worker и четыре threads. Увеличивать число workers до архитектурного разделения process supervisor и HTTP API нельзя.
+Restream Manager запускается через Gunicorn на `127.0.0.1:5000`. Исходящими FFmpeg владеет отдельная служба `cricket-restream-supervisor`, с которой manager связывается через локальный Unix-сокет.
 
-Обе Python-службы запускаются от системного пользователя `cricket-rtmp`. Код, `.venv` и `config/` остаются root-owned и доступны только для чтения. Пользователь сервиса может изменять только `state/`, `logs/` и `run/`.
+Все три Python-службы запускаются от системного пользователя `cricket-rtmp`. Код, `.venv` и `config/` остаются root-owned и доступны только для чтения. Manager может изменять только `state/`, supervisor — только `logs/` и `run/`, а auth callback не имеет writable-исключений.
 
 ## Доменные имена
 

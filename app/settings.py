@@ -73,6 +73,11 @@ class Settings:
         configured = os.environ.get("CRICKET_RTMP_LOG_DIR")
         return Path(configured) if configured else self.project_root / "logs"
 
+    @property
+    def supervisor_socket(self):
+        configured = os.environ.get("CRICKET_RTMP_SUPERVISOR_SOCKET")
+        return Path(configured) if configured else self.run_dir / "supervisor.sock"
+
     def pid_file(self, field_id, url_index):
         return self.run_dir / f"restream_field{field_id}_{url_index}.pid"
 

@@ -35,10 +35,23 @@ class SystemdUnitTests(unittest.TestCase):
         ]
         self.assertEqual(writable, [
             "ReadWritePaths=/opt/cricket-rtmp-node/state",
+        ])
+        self.assertNotIn("ReadWritePaths=/opt/cricket-rtmp-node/config", content)
+        self.assertIn("Wants=cricket-restream-supervisor.service", content)
+
+    def test_supervisor_owns_only_logs_and_runtime_state(self):
+        content = self.read_unit("cricket-restream-supervisor.service")
+        self.assert_common_sandbox(content)
+        writable = [
+            line
+            for line in content.splitlines()
+            if line.startswith("ReadWritePaths=")
+        ]
+        self.assertEqual(writable, [
             "ReadWritePaths=/opt/cricket-rtmp-node/logs",
             "ReadWritePaths=/opt/cricket-rtmp-node/run",
         ])
-        self.assertNotIn("ReadWritePaths=/opt/cricket-rtmp-node/config", content)
+        self.assertNotIn("ReadWritePaths=/opt/cricket-rtmp-node/state", content)
 
     def test_auth_has_sandbox_and_no_writable_path_exception(self):
         content = self.read_unit("rtmp-auth.service")
