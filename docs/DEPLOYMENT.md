@@ -66,8 +66,21 @@ sudo ./scripts/install.sh install
 
 Installer откажется перезаписывать существующий `/opt/cricket-rtmp-node`. Обновление действующего узла будет реализовано отдельным скриптом с резервной копией и rollback.
 
+## Версия конфигурации
+
+Новая установка использует `schema_version: 1`. Проверить старый рабочий файл без изменений:
+
+```bash
+sudo -u cricket-rtmp \
+    /opt/cricket-rtmp-node/.venv/bin/python \
+    /opt/cricket-rtmp-node/scripts/migrate_config.py \
+    --config /opt/cricket-rtmp-node/state/restream-config.json
+```
+
+Код возврата `2` означает, что migration требуется. Для применения необходимо остановить manager, auth и supervisor, выполнить ту же команду с `--apply`, проверить созданный backup и только затем запускать службы. Команда не печатает ключи или destination URL, создаёт backup с режимом `600` и атомарно заменяет рабочий JSON. Автоматически выполнять migration при обычном запуске служб запрещено.
+
 1. Скопировать `config/node.env.example` в `config/node.env` и проверить параметры узла.
-2. Скопировать `config/restream-config.example.json` в `state/restream-config.json` и заменить все ключи.
+2. Скопировать versioned `config/restream-config.example.json` в `state/restream-config.json` и заменить все ключи.
 3. Проверить владельцев и права: `node.env` — `root:cricket-rtmp`/`640`, рабочий JSON — `cricket-rtmp:cricket-rtmp`/`600`.
 4. Настроить DNS, список `server_name` и TLS-пути в Nginx.
 5. Защитить административные маршруты Basic Auth.

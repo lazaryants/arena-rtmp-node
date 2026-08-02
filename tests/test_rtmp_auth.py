@@ -12,6 +12,7 @@ class AuthorizePublishTests(unittest.TestCase):
         self.config_path = Path(self.temporary_directory.name) / "config.json"
         self.config_path.write_text(
             json.dumps({
+                "schema_version": 1,
                 "fields": {
                     "15": {
                         "stream_key": "stream15",

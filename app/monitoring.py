@@ -155,6 +155,7 @@ def health_snapshot(settings):
         checks["config"] = {
             "ok": True,
             "fields": len(config.get("fields", {})),
+            "schema_version": config["schema_version"],
         }
     except (OSError, ValueError, json.JSONDecodeError):
         checks["config"] = {"ok": False}
@@ -184,6 +185,7 @@ def metrics_snapshot(settings):
     config = read_config(settings.config_file)
     fields = config.get("fields", {})
     safe_config = {
+        "schema_version": config["schema_version"],
         "configured_places": len(fields),
         "enabled_places": sum(field.get("enabled") is True for field in fields.values()),
         "publish_auth_enabled_places": sum(

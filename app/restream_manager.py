@@ -157,10 +157,7 @@ def get_fields():
     config = load_config()
     fields = {}
     for field_id, field_data in config.get('fields', {}).items():
-        # Миграция: если есть старый restream_url, преобразуем в список
         urls = field_data.get('restream_urls', [])
-        if not urls and field_data.get('restream_url'):
-            urls = [field_data['restream_url']]
         
         # Получаем stream key (по умолчанию stream{id})
         stream_key = field_data.get('stream_key', f'stream{field_id}')
@@ -308,14 +305,7 @@ def api_get_restream_urls(field_id):
     
     field = config['fields'][str(field_id)]
     
-    # Миграция
     urls = field.get('restream_urls', [])
-    if not urls and field.get('restream_url'):
-        urls = [field['restream_url']]
-        field['restream_urls'] = urls
-        if 'restream_url' in field:
-            del field['restream_url']
-        save_config(config)
     
     return jsonify({'success': True, 'urls': urls})
 
@@ -338,13 +328,7 @@ def api_add_restream_url(field_id):
         
         field = config['fields'][str(field_id)]
         
-        # Миграция
-        if 'restream_urls' not in field:
-            field['restream_urls'] = []
-            if field.get('restream_url'):
-                field['restream_urls'].append(field['restream_url'])
-                del field['restream_url']
-        
+        field.setdefault('restream_urls', [])
         field['restream_urls'].append(new_url)
         save_config(config)
         
@@ -374,13 +358,7 @@ def api_update_restream_url(field_id, url_index):
         
         field = config['fields'][str(field_id)]
         
-        # Миграция
-        if 'restream_urls' not in field:
-            field['restream_urls'] = []
-            if field.get('restream_url'):
-                field['restream_urls'].append(field['restream_url'])
-                del field['restream_url']
-        
+        field.setdefault('restream_urls', [])
         if url_index >= len(field['restream_urls']):
             return jsonify({'success': False, 'message': 'Invalid URL index'}), 400
         
@@ -410,13 +388,7 @@ def api_delete_restream_url(field_id, url_index):
         
         field = config['fields'][str(field_id)]
         
-        # Миграция
-        if 'restream_urls' not in field:
-            field['restream_urls'] = []
-            if field.get('restream_url'):
-                field['restream_urls'].append(field['restream_url'])
-                del field['restream_url']
-        
+        field.setdefault('restream_urls', [])
         if url_index >= len(field['restream_urls']):
             return jsonify({'success': False, 'message': 'Invalid URL index'}), 400
         
@@ -562,8 +534,6 @@ def api_config_create_field():
             'name': data.get('name', f'Field {new_id}'),
             'emoji': data.get('emoji', '🏟️'),
             'stream_key': stream_key,
-            'rtmp_url': f"rtmp://{SETTINGS.public_host}/place{new_id}/{stream_key}",
-            'hls_url': f"/hls/place{new_id}/{stream_key}.m3u8",
             'enabled': data.get('enabled', True),
             'key': random_key
         }
@@ -607,8 +577,6 @@ def api_config_update_field(field_id):
                 # Если stream_key изменился, обновляем URL
                 if new_stream_key != old_stream_key:
                     field['stream_key'] = new_stream_key
-                    field['rtmp_url'] = f"rtmp://{SETTINGS.public_host}/place{field_id}/{new_stream_key}"
-                    field['hls_url'] = f"/hls/place{field_id}/{new_stream_key}.m3u8"
         
         save_config(config)
         return jsonify({'success': True, 'message': 'Field updated'})

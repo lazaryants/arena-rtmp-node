@@ -32,6 +32,7 @@ class MonitoringTests(unittest.TestCase):
         self.settings.config_file.parent.mkdir(parents=True)
         self.settings.config_file.write_text(
             json.dumps({
+                "schema_version": 1,
                 "fields": {
                     "1": {
                         "enabled": True,
@@ -68,6 +69,7 @@ class MonitoringTests(unittest.TestCase):
         serialized = json.dumps(metrics)
 
         self.assertEqual(metrics["hls"]["places"]["1"]["state"], "active")
+        self.assertEqual(metrics["config"]["schema_version"], 1)
         self.assertEqual(metrics["config"]["publish_auth_enabled_places"], 1)
         self.assertNotIn("publish-secret", serialized)
         self.assertNotIn("private-token", serialized)
@@ -78,6 +80,7 @@ class MonitoringTests(unittest.TestCase):
         mocked_rtmp.return_value = {"reachable": True}
         health = health_snapshot(self.settings)
         self.assertEqual(health["status"], "ok")
+        self.assertEqual(health["checks"]["config"]["schema_version"], 1)
         self.assertTrue(all(check["ok"] for check in health["checks"].values()))
 
 

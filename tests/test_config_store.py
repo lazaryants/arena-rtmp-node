@@ -8,6 +8,7 @@ from app.config_store import ConfigStore, ConfigValidationError, validate_config
 
 def valid_config():
     return {
+        "schema_version": 1,
         "fields": {
             "1": {
                 "name": "Place 1",
@@ -64,6 +65,17 @@ class ConfigStoreTests(unittest.TestCase):
         config = valid_config()
         config["fields"]["17"] = config["fields"].pop("1")
         with self.assertRaisesRegex(ConfigValidationError, "invalid field ID"):
+            validate_config(config)
+
+    def test_rejects_missing_or_future_schema_version(self):
+        config = valid_config()
+        del config["schema_version"]
+        with self.assertRaisesRegex(ConfigValidationError, "schema_version"):
+            validate_config(config)
+
+        config = valid_config()
+        config["schema_version"] = 2
+        with self.assertRaisesRegex(ConfigValidationError, "unsupported schema_version"):
             validate_config(config)
 
         config = valid_config()

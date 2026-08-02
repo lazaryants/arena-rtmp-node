@@ -13,6 +13,7 @@ class ConfigApiTests(unittest.TestCase):
         self.path = Path(self.temporary_directory.name) / "restream-config.json"
         self.store = ConfigStore(self.path)
         self.store.save({
+            "schema_version": 1,
             "fields": {
                 "1": {
                     "name": "Place 1",

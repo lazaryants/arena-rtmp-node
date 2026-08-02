@@ -16,6 +16,7 @@
 - отдельный непривилегированный service user и systemd sandbox;
 - локальная XML-статистика Nginx-RTMP на `127.0.0.1:8090/stat`;
 - безопасные health и metrics API для внешнего мониторинга;
+- версионированная конфигурация и явные migrations с защищённой копией;
 - маскирование RTMP URL в журналах.
 
 ## Состояние проекта
@@ -59,6 +60,15 @@ node --check web/script.js
 python3 -m json.tool config/restream-config.example.json >/dev/null
 python3 -m unittest discover -s tests -v
 ```
+
+Проверка необходимости migration ничего не изменяет:
+
+```bash
+python3 scripts/migrate_config.py \
+    --config /opt/cricket-rtmp-node/state/restream-config.json
+```
+
+Применение выполняется только с явным `--apply` и сначала создаёт рядом backup с правами `600`.
 
 Развёртывание описано в [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 

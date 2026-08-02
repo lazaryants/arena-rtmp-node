@@ -12,16 +12,14 @@ from urllib.parse import urlparse
 
 FIELD_ID_RE = re.compile(r"(?:[1-9]|1[0-6])\Z")
 STREAM_KEY_RE = re.compile(r"[A-Za-z0-9._-]{1,128}\Z")
+CURRENT_SCHEMA_VERSION = 1
 ALLOWED_FIELD_KEYS = {
     "emoji",
     "enabled",
-    "hls_url",
     "key",
     "name",
     "publish_auth_enabled",
-    "restream_url",
     "restream_urls",
-    "rtmp_url",
     "stream_key",
 }
 
@@ -89,20 +87,6 @@ def validate_field(field_id, field):
             f"field {field_id}.key is required when publish auth is enabled"
         )
 
-    if "hls_url" in field:
-        hls_url = field["hls_url"]
-        require_text(hls_url, f"field {field_id}.hls_url", 2048)
-        if not hls_url.startswith("/hls/") or any(
-            character.isspace() for character in hls_url
-        ):
-            raise ConfigValidationError(
-                f"field {field_id}.hls_url must be a relative /hls/ URL"
-            )
-
-    for key in ("rtmp_url", "restream_url"):
-        if key in field:
-            validate_rtmp_url(field[key], f"field {field_id}.{key}")
-
     destinations = field.get("restream_urls", [])
     if not isinstance(destinations, list):
         raise ConfigValidationError(f"field {field_id}.restream_urls must be a list")
@@ -118,8 +102,17 @@ def validate_field(field_id, field):
 def validate_config(config):
     if not isinstance(config, dict):
         raise ConfigValidationError("configuration root must be an object")
-    if set(config) != {"fields"}:
-        raise ConfigValidationError("configuration root must contain only fields")
+    if set(config) != {"schema_version", "fields"}:
+        raise ConfigValidationError(
+            "configuration root must contain only schema_version and fields"
+        )
+    if type(config["schema_version"]) is not int:
+        raise ConfigValidationError("schema_version must be an integer")
+    if config["schema_version"] != CURRENT_SCHEMA_VERSION:
+        raise ConfigValidationError(
+            f"unsupported schema_version {config['schema_version']}; "
+            f"expected {CURRENT_SCHEMA_VERSION}"
+        )
 
     fields = config["fields"]
     if not isinstance(fields, dict):
