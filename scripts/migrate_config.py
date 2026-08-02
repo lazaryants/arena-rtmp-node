@@ -64,6 +64,7 @@ def main():
     arguments = parser.parse_args()
 
     path = arguments.config.resolve()
+    original_stat = path.stat()
     with path.open("r", encoding="utf-8") as file:
         original = json.load(file)
     migrated, original_version = migrate_config(original)
@@ -80,6 +81,11 @@ def main():
 
     backup = protected_backup(path, original_version)
     ConfigStore(path).save(migrated)
+    os.chown(path, original_stat.st_uid, original_stat.st_gid)
+    path.chmod(0o600)
+    with path.open("rb") as file:
+        os.fsync(file.fileno())
+    fsync_directory(path.parent)
     print(
         f"Migrated schema {original_version} -> {CURRENT_SCHEMA_VERSION}. "
         f"Protected backup: {backup}"

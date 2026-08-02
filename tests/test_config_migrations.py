@@ -63,6 +63,7 @@ class ConfigMigrationTests(unittest.TestCase):
             path = Path(directory) / "restream-config.json"
             path.write_text(json.dumps(legacy_config()), encoding="utf-8")
             original = path.read_bytes()
+            original_owner = (path.stat().st_uid, path.stat().st_gid)
             command = [
                 sys.executable,
                 str(PROJECT_ROOT / "scripts/migrate_config.py"),
@@ -82,6 +83,8 @@ class ConfigMigrationTests(unittest.TestCase):
             self.assertEqual(backups[0].read_bytes(), original)
             self.assertEqual(backups[0].stat().st_mode & 0o777, 0o600)
             self.assertEqual(json.loads(path.read_text())["schema_version"], 1)
+            self.assertEqual((path.stat().st_uid, path.stat().st_gid), original_owner)
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
             self.assertNotIn("publish-secret", apply.stdout + apply.stderr)
 
 

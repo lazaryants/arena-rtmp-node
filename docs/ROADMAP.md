@@ -4,7 +4,6 @@
 
 - проверить systemd sandbox на staging-сервере командой `systemd-analyze security`;
 - добавить тесты auth callback, публичного API и маскирования журналов;
-- подготовить безопасный update script с backup и rollback;
 - мигрировать publish auth с пилотной площадки на все publishers.
 
 ## Далее

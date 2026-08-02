@@ -8,9 +8,9 @@ bind = os.environ.get(
     "127.0.0.1:5000",
 )
 
-# Restream Manager controls shared configuration, PID files and FFmpeg
-# processes. Multiple workers would introduce concurrent writers and
-# inconsistent in-memory process state.
+# Configuration writes are serialized inside the manager. A single worker
+# keeps that application-level serialization local and predictable; outgoing
+# FFmpeg processes are owned by the separate supervisor service.
 workers = 1
 worker_class = "gthread"
 threads = int(os.environ.get("CRICKET_RTMP_MANAGER_THREADS", "4"))

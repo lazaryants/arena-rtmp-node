@@ -84,6 +84,18 @@ sudo ./scripts/install.sh check
 sudo ./scripts/install.sh install
 ```
 
+Для уже управляемой установки сначала выполняется read-only preflight:
+
+```bash
+sudo ./scripts/update.sh check
+```
+
+Обновление требует явного подтверждения, сохраняет защищённый backup и автоматически выполняет rollback при ошибке:
+
+```bash
+sudo ./scripts/update.sh apply --confirm UPDATE
+```
+
 Серверные Nginx-конфигурации создаются из отдельного профиля и только в staging-каталог:
 
 ```bash

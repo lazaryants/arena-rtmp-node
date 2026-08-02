@@ -64,7 +64,35 @@ sudo ./scripts/install.sh check
 sudo ./scripts/install.sh install
 ```
 
-Installer откажется перезаписывать существующий `/opt/cricket-rtmp-node`. Обновление действующего узла будет реализовано отдельным скриптом с резервной копией и rollback.
+Installer откажется перезаписывать существующий `/opt/cricket-rtmp-node`.
+
+## Обновление управляемой установки
+
+Сначала выполнить полностью read-only preflight из отдельной копии нового release:
+
+```bash
+sudo ./scripts/update.sh check
+```
+
+Он проверяет marker управляемой установки, Python-код, JSON-пример, текущие зависимости и возможность migration рабочей конфигурации. Для применения требуется буквальное подтверждение:
+
+```bash
+sudo ./scripts/update.sh apply --confirm UPDATE
+```
+
+Updater:
+
+- блокирует параллельный update;
+- создаёт уникальный backup в `/var/backups/cricket-rtmp-node/` с закрытыми правами;
+- сохраняет managed-код, приватный `node.env`, state и установленные unit-файлы;
+- останавливает только три Python-службы, но не Nginx;
+- выполняет versioned migration конфигурации;
+- обновляет код и generic systemd units, сохраняя private Nginx profile;
+- проверяет установленный код и JSON до запуска;
+- возвращает прежние файлы, state и units при любой ошибке;
+- после запуска проверяет локальный health endpoint manager.
+
+На время update исходящие FFmpeg-рестримы будут остановлены. Уже принятые Nginx RTMP/HLS-потоки продолжают работать, однако новый publisher с включённым `on_publish` не сможет подключиться, пока auth-служба остановлена. Поэтому production update выполняется только в согласованное окно. Скрипт не изменяет Nginx, DNS, TLS, HLS, журналы и PID-файлы и не обновляет Python-пакеты автоматически.
 
 ## Версия конфигурации
 
