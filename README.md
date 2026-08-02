@@ -57,3 +57,15 @@ python3 -m unittest discover -s tests -v
 ```
 
 Развёртывание описано в [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+Проверка будущего сервера без изменений:
+
+```bash
+sudo ./scripts/install.sh check
+```
+
+Первичная установка файлов выполняется отдельной явной командой. Она не активирует Nginx, systemd, DNS или TLS:
+
+```bash
+sudo ./scripts/install.sh install
+```
