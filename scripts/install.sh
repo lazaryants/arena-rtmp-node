@@ -76,6 +76,37 @@ copy_project() {
         .gitignore README.md requirements.txt; do
         cp -a -- "${SOURCE_DIR}/${item}" "${destination}/"
     done
+
+    # Source validation may have created ignored bytecode. Runtime artifacts
+    # must never become part of an installation.
+    find "${destination}" -type f -name '*.py[co]' -delete
+    find "${destination}" -type d -name __pycache__ -empty -delete
+}
+
+normalize_installed_permissions() {
+    local target="$1"
+    local directory
+
+    chmod 0755 "${target}"
+    for directory in app docs legacy nginx scripts systemd tests web; do
+        find "${target}/${directory}" -type d -exec chmod 0755 {} +
+        find "${target}/${directory}" -type f -exec chmod 0644 {} +
+    done
+    find "${target}/scripts" \
+        -maxdepth 1 \
+        -type f \
+        ! -name '__init__.py' \
+        -exec chmod 0755 {} +
+    chmod 0644 \
+        "${target}/.gitignore" \
+        "${target}/README.md" \
+        "${target}/requirements.txt"
+
+    # A venv created under umask 077 is otherwise unreadable by the service
+    # user even when its parent directory is accessible.
+    find "${target}/.venv" -type d -exec chmod 0755 {} +
+    find "${target}/.venv" -type f -exec chmod 0644 {} +
+    find "${target}/.venv/bin" -type f -exec chmod 0755 {} +
 }
 
 install_project() {
@@ -116,7 +147,7 @@ install_project() {
             find "${staging}" -depth -delete
         fi
         if [[ 
-            "${target_created}" == "1"
+            "${target_created:-0}" == "1"
             && -f "${target}/.cricket-rtmp-node-installing"
         ]]; then
             find "${target}" -depth -delete
@@ -154,6 +185,8 @@ install_project() {
             --disable-pip-version-check \
             -r "${target}/requirements.txt"
     fi
+
+    normalize_installed_permissions "${target}"
 
     if [[ "${skip_service_user}" != "1" ]]; then
         if ! getent group cricket-rtmp >/dev/null 2>&1; then

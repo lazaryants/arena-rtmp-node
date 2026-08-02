@@ -205,6 +205,8 @@ replace_managed_files() {
         fi
         cp -a -- "${SOURCE_DIR}/${item}" "${TARGET}/${item}"
     done
+    find "${TARGET}" -type f -name '*.py[co]' -delete
+    find "${TARGET}" -type d -name __pycache__ -empty -delete
     for item in "${MANAGED_FILES[@]}"; do
         install -m 0644 -- "${SOURCE_DIR}/${item}" "${TARGET}/${item}"
     done
@@ -217,6 +219,15 @@ replace_managed_files() {
         "${SOURCE_DIR}/config/nginx-render.example.json" \
         "${SOURCE_DIR}/config/restream-config.example.json" \
         "${TARGET}/config/"
+    for item in "${MANAGED_DIRECTORIES[@]}"; do
+        find "${TARGET}/${item}" -type d -exec chmod 0755 {} +
+        find "${TARGET}/${item}" -type f -exec chmod 0644 {} +
+    done
+    find "${TARGET}/scripts" \
+        -maxdepth 1 \
+        -type f \
+        ! -name '__init__.py' \
+        -exec chmod 0755 {} +
     if [[ "${SKIP_OWNERSHIP}" != "1" ]]; then
         chown -R root:root \
             "${TARGET}/app" \
