@@ -41,6 +41,12 @@ class Settings:
             "http://127.0.0.1/hls",
         ).rstrip("/"),
     )
+    rtmp_stat_url: str = field(
+        default_factory=lambda: os.environ.get(
+            "CRICKET_RTMP_STAT_URL",
+            "http://127.0.0.1:8090/stat",
+        ),
+    )
 
     @property
     def app_dir(self):

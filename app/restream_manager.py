@@ -12,8 +12,10 @@ from datetime import datetime
 
 try:
     from .settings import SETTINGS
+    from .monitoring import health_snapshot, metrics_snapshot
 except ImportError:
     from settings import SETTINGS
+    from monitoring import health_snapshot, metrics_snapshot
 
 app = Flask(
     __name__,
@@ -27,6 +29,24 @@ RTMP_URL_PATTERN = re.compile(
     r"rtmps?://\S+",
     re.IGNORECASE,
 )
+
+
+@app.route('/api/node/health')
+def api_node_health():
+    """Safe component readiness without secrets."""
+    return jsonify(health_snapshot(SETTINGS))
+
+
+@app.route('/api/node/metrics')
+def api_node_metrics():
+    """Safe node metrics without URLs, keys, client addresses or logs."""
+    try:
+        return jsonify(metrics_snapshot(SETTINGS))
+    except (OSError, ValueError, json.JSONDecodeError):
+        return jsonify({
+            'status': 'unavailable',
+            'message': 'Node metrics are temporarily unavailable',
+        }), 503
 
 
 def redact_rtmp_urls(value):

@@ -43,6 +43,11 @@ server {
         include proxy_params;
     }
 
+    location /api/node/ {
+        proxy_pass http://@@MANAGER_UPSTREAM@@/api/node/;
+        include proxy_params;
+    }
+
     location /admin/api/ {
         proxy_pass http://@@MANAGER_UPSTREAM@@/api/;
         include proxy_params;
