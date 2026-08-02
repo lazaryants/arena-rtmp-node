@@ -37,6 +37,9 @@ class RenderNginxTests(unittest.TestCase):
         http = outputs["cricket-rtmp-http.conf"]
         self.assertEqual(rtmp.count("application place"), 16)
         self.assertEqual(rtmp.count("on_publish "), 1)
+        self.assertEqual(rtmp.count("rtmp_auto_push on;"), 1)
+        self.assertEqual(rtmp.count("rtmp_auto_push_reconnect 1s;"), 1)
+        self.assertLess(rtmp.index("rtmp_auto_push on;"), rtmp.index("rtmp {"))
         self.assertIn("application place15", rtmp)
         self.assertIn("rtmp.example.test node.example.test", http)
         self.assertNotIn("@@", rtmp + http)
