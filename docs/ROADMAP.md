@@ -2,7 +2,7 @@
 
 ## Ближайший этап
 
-- проверить systemd sandbox на staging-сервере командой `systemd-analyze security`;
+- проверить подготовленные sandbox units на реальном staging-сервере;
 - добавить тесты auth callback, публичного API и маскирования журналов;
 - мигрировать publish auth с пилотной площадки на все publishers.
 

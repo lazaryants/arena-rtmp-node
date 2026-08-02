@@ -59,6 +59,7 @@ python3 -m py_compile app/*.py
 node --check web/script.js
 python3 -m json.tool config/restream-config.example.json >/dev/null
 python3 -m unittest discover -s tests -v
+python3 scripts/audit_systemd.py --max-exposure 3.0
 ```
 
 Проверка необходимости migration ничего не изменяет:
@@ -71,6 +72,7 @@ python3 scripts/migrate_config.py \
 Применение выполняется только с явным `--apply` и сначала создаёт рядом backup с правами `600`.
 
 Развёртывание описано в [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Первая миграция исторического сервера вынесена в [docs/FIRST_MIGRATION.md](docs/FIRST_MIGRATION.md).
 
 Проверка будущего сервера без изменений:
 

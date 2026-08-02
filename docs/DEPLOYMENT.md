@@ -30,6 +30,12 @@ Restream Manager запускается через Gunicorn на `127.0.0.1:5000
 
 Все три Python-службы запускаются от системного пользователя `cricket-rtmp`. Код, `.venv` и `config/` остаются root-owned и доступны только для чтения. Manager может изменять только `state/`, supervisor — только `logs/` и `run/`, а auth callback не имеет writable-исключений.
 
+Repository units должны проходить read-only аудит с exposure не выше `3.0`:
+
+```bash
+python3 scripts/audit_systemd.py --max-exposure 3.0
+```
+
 ## Доменные имена
 
 Основное предлагаемое имя узла — `rtmp.cricket-stream.icu`. Оно может одновременно использоваться для RTMP-публикации и web-интерфейса: протоколы работают на разных портах.
