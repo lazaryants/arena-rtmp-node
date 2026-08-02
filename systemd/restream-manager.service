@@ -9,9 +9,10 @@ WorkingDirectory=/opt/cricket-rtmp-node
 Environment="PATH=/opt/cricket-rtmp-node/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 Environment="CRICKET_RTMP_ROOT=/opt/cricket-rtmp-node"
 EnvironmentFile=-/opt/cricket-rtmp-node/config/node.env
-ExecStart=/opt/cricket-rtmp-node/.venv/bin/python -m app.restream_manager
+ExecStart=/opt/cricket-rtmp-node/.venv/bin/gunicorn --config /opt/cricket-rtmp-node/config/gunicorn.conf.py app.wsgi:application
 Restart=always
 RestartSec=10
+TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target

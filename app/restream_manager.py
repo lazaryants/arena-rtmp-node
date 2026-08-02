@@ -736,7 +736,3 @@ def api_config_delete_field(field_id):
         return jsonify({'success': True, 'message': 'Field deleted'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-
-
-if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5000, debug=False)
