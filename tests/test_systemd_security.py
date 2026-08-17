@@ -30,9 +30,9 @@ class SystemdSecurityAuditTests(unittest.TestCase):
             self.skipTest("systemd-analyze is unavailable")
         results = audit_units(PROJECT_ROOT / "systemd", 3.0)
         self.assertEqual(set(results), {
-            "cricket-restream-supervisor.service",
-            "rtmp-auth.service",
-            "restream-manager.service",
+            "arena-restream-supervisor.service",
+            "arena-rtmp-auth.service",
+            "arena-restream-manager.service",
         })
         self.assertTrue(all(score <= 3.0 for score in results.values()))
 

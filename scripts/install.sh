@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-readonly DEFAULT_TARGET="/opt/cricket-rtmp-node"
+readonly DEFAULT_TARGET="/opt/arena-rtmp-node"
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly SOURCE_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
@@ -12,10 +12,10 @@ Usage:
   sudo ./scripts/install.sh install [options]
 
 Options:
-  --target PATH             Installation root (default: /opt/cricket-rtmp-node)
+  --target PATH             Installation root (default: /opt/arena-rtmp-node)
   --skip-python-deps        Create .venv but do not run pip install
   --skip-system-check       Skip checks for Nginx, RTMP module and FFmpeg
-  --skip-service-user       Do not create/chown to cricket-rtmp (test packaging only)
+  --skip-service-user       Do not create/chown to arena-rtmp (test packaging only)
   -h, --help                Show this help
 
 The installer never modifies /etc/nginx, /etc/systemd/system, DNS or TLS.
@@ -144,7 +144,7 @@ install_project() {
 
     target_parent="$(dirname -- "${target}")"
     install -d -m 0755 -- "${target_parent}"
-    staging="$(mktemp -d "${target_parent}/.cricket-rtmp-node.installing.XXXXXX")"
+    staging="$(mktemp -d "${target_parent}/.arena-rtmp-node.installing.XXXXXX")"
 
     cleanup() {
         if [[ -n "${staging:-}" && -d "${staging}" ]]; then
@@ -152,7 +152,7 @@ install_project() {
         fi
         if [[ 
             "${target_created:-0}" == "1"
-            && -f "${target}/.cricket-rtmp-node-installing"
+            && -f "${target}/.arena-rtmp-node-installing"
         ]]; then
             find "${target}" -depth -delete
         fi
@@ -174,8 +174,8 @@ install_project() {
         "${staging}/config/restream-config.example.json" \
         "${staging}/state/restream-config.json"
 
-    touch "${staging}/.cricket-rtmp-node-installing"
-    chmod 0644 "${staging}/.cricket-rtmp-node-installing"
+    touch "${staging}/.arena-rtmp-node-installing"
+    chmod 0644 "${staging}/.arena-rtmp-node-installing"
     chmod 0755 "${staging}"
     mv -- "${staging}" "${target}"
     staging=""
@@ -193,24 +193,24 @@ install_project() {
     normalize_installed_permissions "${target}"
 
     if [[ "${skip_service_user}" != "1" ]]; then
-        if ! getent group cricket-rtmp >/dev/null 2>&1; then
-            groupadd --system cricket-rtmp
+        if ! getent group arena-rtmp >/dev/null 2>&1; then
+            groupadd --system arena-rtmp
         fi
-        if ! id -u cricket-rtmp >/dev/null 2>&1; then
+        if ! id -u arena-rtmp >/dev/null 2>&1; then
             useradd \
                 --system \
-                --gid cricket-rtmp \
+                --gid arena-rtmp \
                 --home-dir "${target}" \
                 --no-create-home \
                 --shell /usr/sbin/nologin \
-                cricket-rtmp
+                arena-rtmp
         fi
 
-        chown root:cricket-rtmp "${target}/config"
+        chown root:arena-rtmp "${target}/config"
         chmod 0750 "${target}/config"
-        chown root:cricket-rtmp "${target}/config/node.env"
+        chown root:arena-rtmp "${target}/config/node.env"
         chmod 0640 "${target}/config/node.env"
-        chown cricket-rtmp:cricket-rtmp \
+        chown arena-rtmp:arena-rtmp \
             "${target}/state" \
             "${target}/state/restream-config.json" \
             "${target}/logs" \
@@ -219,9 +219,9 @@ install_project() {
         chmod 0700 "${target}/state" "${target}/logs" "${target}/run"
     fi
 
-    unlink "${target}/.cricket-rtmp-node-installing"
-    touch "${target}/.cricket-rtmp-node-managed"
-    chmod 0644 "${target}/.cricket-rtmp-node-managed"
+    unlink "${target}/.arena-rtmp-node-installing"
+    touch "${target}/.arena-rtmp-node-managed"
+    chmod 0644 "${target}/.arena-rtmp-node-managed"
     trap - EXIT
 
     echo
@@ -231,8 +231,8 @@ install_project() {
     echo "Next manual checks:"
     echo "  1. Edit ${target}/config/node.env"
     echo "  2. Replace every CHANGE_ME_* in ${target}/state/restream-config.json"
-    echo "  3. Verify node.env is root:cricket-rtmp/640"
-    echo "  4. Verify state/restream-config.json is cricket-rtmp:cricket-rtmp/600"
+    echo "  3. Verify node.env is root:arena-rtmp/640"
+    echo "  4. Verify state/restream-config.json is arena-rtmp:arena-rtmp/600"
 }
 
 main() {

@@ -1,1 +1,1 @@
-"""Cricket RTMP node application modules."""
+"""Arena RTMP node application modules."""

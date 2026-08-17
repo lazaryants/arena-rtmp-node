@@ -2,7 +2,7 @@ let streams = [];
 let nodeMetrics = null;
 const sourceMetricsCache = new Map();
 
-const MONITOR_LAYOUT_KEY = 'cricket-monitor-columns';
+const MONITOR_LAYOUT_KEY = 'arena-monitor-columns';
 
 function setMonitorColumns(value) {
     const columns = ['2', '3', '4'].includes(String(value))

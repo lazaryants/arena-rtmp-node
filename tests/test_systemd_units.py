@@ -11,8 +11,8 @@ class SystemdUnitTests(unittest.TestCase):
 
     def assert_common_sandbox(self, content):
         for directive in (
-            "User=cricket-rtmp",
-            "Group=cricket-rtmp",
+            "User=arena-rtmp",
+            "Group=arena-rtmp",
             "NoNewPrivileges=true",
             "PrivateDevices=true",
             "PrivateTmp=true",
@@ -34,7 +34,7 @@ class SystemdUnitTests(unittest.TestCase):
         self.assertNotIn("User=root", content)
 
     def test_manager_has_sandbox_and_only_expected_writable_paths(self):
-        content = self.read_unit("restream-manager.service")
+        content = self.read_unit("arena-restream-manager.service")
         self.assert_common_sandbox(content)
         writable = [
             line
@@ -42,13 +42,13 @@ class SystemdUnitTests(unittest.TestCase):
             if line.startswith("ReadWritePaths=")
         ]
         self.assertEqual(writable, [
-            "ReadWritePaths=/opt/cricket-rtmp-node/state",
+            "ReadWritePaths=/opt/arena-rtmp-node/state",
         ])
-        self.assertNotIn("ReadWritePaths=/opt/cricket-rtmp-node/config", content)
-        self.assertIn("Wants=cricket-restream-supervisor.service", content)
+        self.assertNotIn("ReadWritePaths=/opt/arena-rtmp-node/config", content)
+        self.assertIn("Wants=arena-restream-supervisor.service", content)
 
     def test_supervisor_owns_only_logs_and_runtime_state(self):
-        content = self.read_unit("cricket-restream-supervisor.service")
+        content = self.read_unit("arena-restream-supervisor.service")
         self.assert_common_sandbox(content)
         writable = [
             line
@@ -56,13 +56,13 @@ class SystemdUnitTests(unittest.TestCase):
             if line.startswith("ReadWritePaths=")
         ]
         self.assertEqual(writable, [
-            "ReadWritePaths=/opt/cricket-rtmp-node/logs",
-            "ReadWritePaths=/opt/cricket-rtmp-node/run",
+            "ReadWritePaths=/opt/arena-rtmp-node/logs",
+            "ReadWritePaths=/opt/arena-rtmp-node/run",
         ])
-        self.assertNotIn("ReadWritePaths=/opt/cricket-rtmp-node/state", content)
+        self.assertNotIn("ReadWritePaths=/opt/arena-rtmp-node/state", content)
 
     def test_auth_has_sandbox_and_no_writable_path_exception(self):
-        content = self.read_unit("rtmp-auth.service")
+        content = self.read_unit("arena-rtmp-auth.service")
         self.assert_common_sandbox(content)
         self.assertNotIn("ReadWritePaths=", content)
 

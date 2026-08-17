@@ -4,13 +4,13 @@ After=network.target
 
 [Service]
 Type=simple
-User=cricket-rtmp
-Group=cricket-rtmp
-WorkingDirectory=/opt/cricket-rtmp-node
-Environment="CRICKET_RTMP_ROOT=/opt/cricket-rtmp-node"
+User=arena-rtmp
+Group=arena-rtmp
+WorkingDirectory=/opt/arena-rtmp-node
+Environment="ARENA_RTMP_ROOT=/opt/arena-rtmp-node"
 Environment="PYTHONDONTWRITEBYTECODE=1"
-EnvironmentFile=-/opt/cricket-rtmp-node/config/node.env
-ExecStart=/opt/cricket-rtmp-node/.venv/bin/python -m app.rtmp_auth
+EnvironmentFile=-/opt/arena-rtmp-node/config/node.env
+ExecStart=/opt/arena-rtmp-node/.venv/bin/python -m app.rtmp_auth
 Restart=always
 RestartSec=10
 UMask=0077

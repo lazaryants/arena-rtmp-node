@@ -207,9 +207,9 @@
     <div class="container">
         <header class="topbar">
             <div class="brand">
-                <span class="brand-mark" aria-hidden="true">🏏</span>
+                <span class="brand-mark" aria-hidden="true">🏐</span>
                 <div>
-                    <div class="brand-title">Cricket RTMP Node</div>
+                    <div class="brand-title">Arena RTMP Node</div>
                     <div class="brand-subtitle">Receiving and distribution server</div>
                 </div>
             </div>
@@ -260,7 +260,7 @@
                 <label>Emoji:</label>
                 <select id="fieldEmoji">
                     <option value="🏟️">🏟️ Stadium</option>
-                    <option value="🏏">🏏 Cricket</option>
+                    <option value="🏐">🏐 Volleyball</option>
                     <option value="📍">📍 Location</option>
                     <option value="📹">📹 Camera</option>
                     <option value="🎥">🎥 Video</option>
@@ -292,7 +292,7 @@
     </div>
     <script>
         let fields = {};
-        const CONFIG_LAYOUT_KEY = 'cricket-config-columns';
+        const CONFIG_LAYOUT_KEY = 'arena-config-columns';
         function setConfigColumns(value) {
             const columns = ['2', '3', '4'].includes(String(value))
                 ? String(value)

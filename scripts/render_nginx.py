@@ -168,9 +168,9 @@ def render(profile_path, output_dir):
     })
 
     outputs = {
-        "cricket-rtmp.conf": rtmp,
-        "cricket-rtmp-http.conf": http,
-        "cricket-rtmp-stat-local.conf": stat_template,
+        "arena-rtmp.conf": rtmp,
+        "arena-rtmp-http.conf": http,
+        "arena-rtmp-stat-local.conf": stat_template,
     }
     for filename, content in outputs.items():
         atomic_write(output_dir / filename, content)

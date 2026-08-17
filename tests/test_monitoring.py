@@ -27,10 +27,10 @@ class MonitoringTests(unittest.TestCase):
         self.ffmpeg.chmod(0o755)
 
         environment = {
-            "CRICKET_RTMP_ROOT": str(self.root),
-            "CRICKET_RTMP_HLS_ROOT": str(self.hls_root),
-            "CRICKET_RTMP_FFMPEG": str(self.ffmpeg),
-            "CRICKET_RTMP_STAT_URL": "http://127.0.0.1:8090/stat",
+            "ARENA_RTMP_ROOT": str(self.root),
+            "ARENA_RTMP_HLS_ROOT": str(self.hls_root),
+            "ARENA_RTMP_FFMPEG": str(self.ffmpeg),
+            "ARENA_RTMP_STAT_URL": "http://127.0.0.1:8090/stat",
         }
         with patch.dict(os.environ, environment, clear=True):
             self.settings = Settings()

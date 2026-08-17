@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-readonly DEFAULT_TARGET="/opt/cricket-rtmp-node"
-readonly DEFAULT_BACKUP_ROOT="/var/backups/cricket-rtmp-node"
+readonly DEFAULT_TARGET="/opt/arena-rtmp-node"
+readonly DEFAULT_BACKUP_ROOT="/var/backups/arena-rtmp-node"
 readonly DEFAULT_SYSTEMD_DIR="/etc/systemd/system"
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly SOURCE_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 readonly SERVICES=(
-    cricket-restream-supervisor.service
-    rtmp-auth.service
-    restream-manager.service
+    arena-restream-supervisor.service
+    arena-rtmp-auth.service
+    arena-restream-manager.service
 )
 readonly MANAGED_DIRECTORIES=(
     app docs legacy nginx scripts systemd tests web
@@ -38,8 +38,8 @@ Usage:
   sudo ./scripts/update.sh apply --confirm UPDATE [options]
 
 Options:
-  --target PATH          Managed installation (default: /opt/cricket-rtmp-node)
-  --backup-root PATH     Backup parent (default: /var/backups/cricket-rtmp-node)
+  --target PATH          Managed installation (default: /opt/arena-rtmp-node)
+  --backup-root PATH     Backup parent (default: /var/backups/arena-rtmp-node)
   --systemd-dir PATH     Unit destination (default: /etc/systemd/system)
   --skip-services        Do not install/restart units (test packaging only)
   --skip-ownership       Do not enforce root ownership (test packaging only)
@@ -80,7 +80,7 @@ validate_target() {
     require_absolute_safe_path "backup root" "${BACKUP_ROOT}"
     require_absolute_safe_path "systemd directory" "${SYSTEMD_DIR}"
     [[ -d "${TARGET}" ]] || fail "target does not exist: ${TARGET}"
-    [[ -f "${TARGET}/.cricket-rtmp-node-managed" ]] \
+    [[ -f "${TARGET}/.arena-rtmp-node-managed" ]] \
         || fail "target is not marked as a managed installation"
     [[ -x "${TARGET}/.venv/bin/python" ]] \
         || fail "target Python environment is missing"
@@ -147,8 +147,8 @@ remember_services() {
 
 stop_services() {
     local service
-    for service in restream-manager.service rtmp-auth.service \
-        cricket-restream-supervisor.service; do
+    for service in arena-restream-manager.service arena-rtmp-auth.service \
+        arena-restream-supervisor.service; do
         systemctl stop "${service}" 2>/dev/null || true
     done
     SERVICES_STOPPED=1
@@ -156,8 +156,8 @@ stop_services() {
 
 start_previous_services() {
     local service
-    for service in cricket-restream-supervisor.service rtmp-auth.service \
-        restream-manager.service; do
+    for service in arena-restream-supervisor.service arena-rtmp-auth.service \
+        arena-restream-manager.service; do
         if [[ " ${PREVIOUSLY_ACTIVE[*]} " == *" ${service} "* ]]; then
             systemctl start "${service}"
         fi
@@ -181,7 +181,7 @@ create_backup() {
     cp -a --parents -- \
         "${TARGET}/config" \
         "${TARGET}/state" \
-        "${TARGET}/.cricket-rtmp-node-managed" \
+        "${TARGET}/.arena-rtmp-node-managed" \
         "${BACKUP_DIR}/target"
 
     if [[ "${SKIP_SERVICES}" != "1" ]]; then
@@ -288,8 +288,8 @@ restore_backup() {
         fi
     done
     cp -a -- \
-        "${backup_target}/.cricket-rtmp-node-managed" \
-        "${TARGET}/.cricket-rtmp-node-managed"
+        "${backup_target}/.arena-rtmp-node-managed" \
+        "${TARGET}/.arena-rtmp-node-managed"
 
     if [[ "${SKIP_SERVICES}" != "1" ]]; then
         for unit in "${SERVICES[@]}"; do
@@ -357,7 +357,7 @@ apply_update() {
         install_units
         start_previous_services
         if [[ "${SKIP_HEALTH_CHECK}" != "1" \
-            && " ${PREVIOUSLY_ACTIVE[*]} " == *" restream-manager.service "* ]]; then
+            && " ${PREVIOUSLY_ACTIVE[*]} " == *" arena-restream-manager.service "* ]]; then
             wait_for_manager
         fi
     fi

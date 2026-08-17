@@ -1,6 +1,6 @@
 # Первая миграция исторического узла
 
-Этот документ описывает переход с разрозненных файлов в `/opt`, `/var/www/html` и `/var/log` на управляемую установку `/opt/cricket-rtmp-node`. Он не является командой немедленно менять production.
+Этот документ описывает переход с разрозненных файлов в `/opt`, `/var/www/html` и `/var/log` на управляемую установку `/opt/arena-rtmp-node`. Он не является командой немедленно менять production.
 
 ## Неизменяемые условия
 
@@ -17,7 +17,7 @@
 ```bash
 systemctl is-active nginx rtmp-auth restream-manager dvr-recorder
 systemctl cat rtmp-auth restream-manager dvr-recorder
-nginx -T 2>/dev/null > /root/nginx-before-cricket-rtmp-node.txt
+nginx -T 2>/dev/null > /root/nginx-before-arena-rtmp-node.txt
 ss -ltnp
 find /opt /etc/systemd/system /etc/nginx \
     -maxdepth 3 -type f \
@@ -36,11 +36,11 @@ sudo ./scripts/install.sh check
 sudo ./scripts/install.sh install
 ```
 
-Installer создаёт `/opt/cricket-rtmp-node`, но не меняет Nginx, systemd, DNS или TLS. После этого рабочий JSON копируется локально с сохранением режима `600` и проходит read-only migration check. Применение migration выполняется только после отдельного backup.
+Installer создаёт `/opt/arena-rtmp-node`, но не меняет Nginx, systemd, DNS или TLS. После этого рабочий JSON копируется локально с сохранением режима `600` и проходит read-only migration check. Применение migration выполняется только после отдельного backup.
 
 ## Фаза 3. Private server profile
 
-На сервере создаётся игнорируемый Git файл `config/nginx-render.json`. Пока новый сертификат не выпущен, в нём временно указывается действующее имя и его TLS paths. Это значение не переносится в исходный код. После выпуска сертификата профиль и `CRICKET_RTMP_PUBLIC_HOST` переключаются на `rtmp.cricket-stream.icu` одним согласованным изменением.
+На сервере создаётся игнорируемый Git файл `config/nginx-render.json`. Пока новый сертификат не выпущен, в нём временно указывается действующее имя и его TLS paths. Это значение не переносится в исходный код. После выпуска сертификата профиль и `ARENA_RTMP_PUBLIC_HOST` переключаются на `rtmp.arena76.top` одним согласованным изменением.
 
 Renderer пишет только в staging:
 
