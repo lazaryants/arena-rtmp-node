@@ -4,7 +4,7 @@ import os
 
 
 bind = os.environ.get(
-    "CRICKET_RTMP_MANAGER_BIND",
+    "ARENA_RTMP_MANAGER_BIND",
     "127.0.0.1:5000",
 )
 
@@ -13,15 +13,15 @@ bind = os.environ.get(
 # FFmpeg processes are owned by the separate supervisor service.
 workers = 1
 worker_class = "gthread"
-threads = int(os.environ.get("CRICKET_RTMP_MANAGER_THREADS", "4"))
+threads = int(os.environ.get("ARENA_RTMP_MANAGER_THREADS", "4"))
 
-timeout = int(os.environ.get("CRICKET_RTMP_MANAGER_TIMEOUT", "30"))
+timeout = int(os.environ.get("ARENA_RTMP_MANAGER_TIMEOUT", "30"))
 graceful_timeout = 15
 keepalive = 5
 
 accesslog = "-"
 errorlog = "-"
 capture_output = True
-loglevel = os.environ.get("CRICKET_RTMP_LOG_LEVEL", "info")
+loglevel = os.environ.get("ARENA_RTMP_LOG_LEVEL", "info")
 
-proc_name = "cricket-rtmp-manager"
+proc_name = "arena-rtmp-manager"

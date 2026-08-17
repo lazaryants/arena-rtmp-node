@@ -1,10 +1,10 @@
 {
     "server_names": [
-        "rtmp.cricket-stream.icu"
+        "rtmp.arena76.top"
     ],
-    "tls_certificate": "/etc/letsencrypt/live/rtmp.cricket-stream.icu/fullchain.pem",
-    "tls_certificate_key": "/etc/letsencrypt/live/rtmp.cricket-stream.icu/privkey.pem",
-    "web_root": "/opt/cricket-rtmp-node/web",
+    "tls_certificate": "/etc/letsencrypt/live/rtmp.arena76.top/fullchain.pem",
+    "tls_certificate_key": "/etc/letsencrypt/live/rtmp.arena76.top/privkey.pem",
+    "web_root": "/opt/arena-rtmp-node/web",
     "hls_root": "/var/www/hls",
     "basic_auth_file": "/etc/nginx/.htpasswd",
     "manager_upstream": "127.0.0.1:5000",

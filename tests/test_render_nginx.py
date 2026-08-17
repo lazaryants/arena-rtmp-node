@@ -12,7 +12,7 @@ class RenderNginxTests(unittest.TestCase):
             "server_names": ["rtmp.example.test", "node.example.test"],
             "tls_certificate": "/etc/tls/fullchain.pem",
             "tls_certificate_key": "/etc/tls/privkey.pem",
-            "web_root": "/opt/cricket-rtmp-node/web",
+            "web_root": "/opt/arena-rtmp-node/web",
             "hls_root": "/var/www/hls",
             "basic_auth_file": "/etc/nginx/.htpasswd",
             "manager_upstream": "127.0.0.1:5000",
@@ -33,8 +33,8 @@ class RenderNginxTests(unittest.TestCase):
         temporary_directory, outputs = self.render_profile(self.profile())
         self.addCleanup(temporary_directory.cleanup)
 
-        rtmp = outputs["cricket-rtmp.conf"]
-        http = outputs["cricket-rtmp-http.conf"]
+        rtmp = outputs["arena-rtmp.conf"]
+        http = outputs["arena-rtmp-http.conf"]
         self.assertEqual(rtmp.count("application place"), 16)
         self.assertEqual(rtmp.count("on_publish "), 1)
         self.assertEqual(rtmp.count("rtmp_auto_push on;"), 1)

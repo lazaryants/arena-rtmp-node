@@ -55,7 +55,7 @@ class UpdateScriptTests(unittest.TestCase):
         self.config.write_text(json.dumps(self.legacy), encoding="utf-8")
         self.node_env = self.target / "config/node.env"
         self.node_env.write_text(
-            "CRICKET_RTMP_PUBLIC_HOST=private.example\n",
+            "ARENA_RTMP_PUBLIC_HOST=private.example\n",
             encoding="utf-8",
         )
 
@@ -107,7 +107,7 @@ class UpdateScriptTests(unittest.TestCase):
         self.assertEqual(migrated["fields"]["3"]["key"], "publish-secret")
         self.assertEqual(
             self.node_env.read_text(encoding="utf-8"),
-            "CRICKET_RTMP_PUBLIC_HOST=private.example\n",
+            "ARENA_RTMP_PUBLIC_HOST=private.example\n",
         )
         self.assertNotIn("publish-secret", apply.stdout + apply.stderr)
         backup_directories = list(self.backups.glob("update-*"))
@@ -140,7 +140,7 @@ class UpdateScriptTests(unittest.TestCase):
         fake_bin = self.root / "bin"
         systemd_dir.mkdir()
         fake_bin.mkdir()
-        for unit in ("restream-manager.service", "rtmp-auth.service"):
+        for unit in ("arena-restream-manager.service", "arena-rtmp-auth.service"):
             (systemd_dir / unit).write_text(f"old {unit}\n", encoding="utf-8")
 
         version_file = self.target / "app/version.py"
@@ -152,8 +152,8 @@ class UpdateScriptTests(unittest.TestCase):
         (fake_bin / "systemctl").write_text(
             "#!/usr/bin/env bash\n"
             "if [[ \"$1\" == is-active && "
-            "( \"$3\" == restream-manager.service || "
-            "\"$3\" == rtmp-auth.service ) ]]; then exit 0; fi\n"
+            "( \"$3\" == arena-restream-manager.service || "
+            "\"$3\" == arena-rtmp-auth.service ) ]]; then exit 0; fi\n"
             "if [[ \"$1\" == is-active ]]; then exit 3; fi\n"
             "exit 0\n",
             encoding="utf-8",
@@ -187,10 +187,10 @@ class UpdateScriptTests(unittest.TestCase):
         self.assertIn("Rollback completed", result.stderr)
         self.assertIn("OLD_ROLLBACK_MARKER", version_file.read_text(encoding="utf-8"))
         self.assertEqual(json.loads(self.config.read_text(encoding="utf-8")), self.legacy)
-        self.assertFalse((systemd_dir / "cricket-restream-supervisor.service").exists())
+        self.assertFalse((systemd_dir / "arena-restream-supervisor.service").exists())
         self.assertEqual(
-            (systemd_dir / "restream-manager.service").read_text(encoding="utf-8"),
-            "old restream-manager.service\n",
+            (systemd_dir / "arena-restream-manager.service").read_text(encoding="utf-8"),
+            "old arena-restream-manager.service\n",
         )
 
 

@@ -9,9 +9,9 @@ from pathlib import Path
 
 
 UNIT_NAMES = (
-    "cricket-restream-supervisor.service",
-    "rtmp-auth.service",
-    "restream-manager.service",
+    "arena-restream-supervisor.service",
+    "arena-rtmp-auth.service",
+    "arena-restream-manager.service",
 )
 EXPOSURE_RE = re.compile(r"Overall exposure level .*: ([0-9]+(?:\.[0-9]+)?)")
 

@@ -94,7 +94,7 @@ def authorize_publish(
 
 
 class AuthHandler(BaseHTTPRequestHandler):
-    server_version = "CricketRTMPAuth/2"
+    server_version = "ArenaRTMPAuth/2"
 
     def send_text(self, status, text):
         payload = (text + "\n").encode("utf-8")

@@ -12,7 +12,7 @@ class SettingsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             with patch.dict(
                 os.environ,
-                {"CRICKET_RTMP_ROOT": directory},
+                {"ARENA_RTMP_ROOT": directory},
                 clear=True,
             ):
                 settings = Settings()
@@ -24,12 +24,12 @@ class SettingsTests(unittest.TestCase):
 
     def test_explicit_overrides_are_respected(self):
         environment = {
-            "CRICKET_RTMP_ROOT": "/srv/node",
-            "CRICKET_RTMP_CONFIG": "/etc/node.json",
-            "CRICKET_RTMP_RUN_DIR": "/run/node",
-            "CRICKET_RTMP_LOG_DIR": "/var/log/node",
-            "CRICKET_RTMP_PUBLIC_HOST": "ingest.example.test",
-            "CRICKET_RTMP_AUTH_BIND": "127.0.0.1:18080",
+            "ARENA_RTMP_ROOT": "/srv/node",
+            "ARENA_RTMP_CONFIG": "/etc/node.json",
+            "ARENA_RTMP_RUN_DIR": "/run/node",
+            "ARENA_RTMP_LOG_DIR": "/var/log/node",
+            "ARENA_RTMP_PUBLIC_HOST": "ingest.example.test",
+            "ARENA_RTMP_AUTH_BIND": "127.0.0.1:18080",
         }
         with patch.dict(os.environ, environment, clear=True):
             settings = Settings()
@@ -55,7 +55,7 @@ class SettingsTests(unittest.TestCase):
             with self.subTest(value=value):
                 with patch.dict(
                     os.environ,
-                    {"CRICKET_RTMP_AUTH_BIND": value},
+                    {"ARENA_RTMP_AUTH_BIND": value},
                     clear=True,
                 ):
                     with self.assertRaises(ValueError):

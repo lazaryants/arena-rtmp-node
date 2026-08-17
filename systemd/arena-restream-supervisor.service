@@ -1,17 +1,17 @@
 [Unit]
-Description=Cricket RTMP Restream Supervisor
+Description=Arena RTMP Restream Supervisor
 After=network.target
 
 [Service]
 Type=simple
-User=cricket-rtmp
-Group=cricket-rtmp
-WorkingDirectory=/opt/cricket-rtmp-node
-Environment="PATH=/opt/cricket-rtmp-node/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
-Environment="CRICKET_RTMP_ROOT=/opt/cricket-rtmp-node"
+User=arena-rtmp
+Group=arena-rtmp
+WorkingDirectory=/opt/arena-rtmp-node
+Environment="PATH=/opt/arena-rtmp-node/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+Environment="ARENA_RTMP_ROOT=/opt/arena-rtmp-node"
 Environment="PYTHONDONTWRITEBYTECODE=1"
-EnvironmentFile=-/opt/cricket-rtmp-node/config/node.env
-ExecStart=/opt/cricket-rtmp-node/.venv/bin/python -m app.restream_supervisor
+EnvironmentFile=-/opt/arena-rtmp-node/config/node.env
+ExecStart=/opt/arena-rtmp-node/.venv/bin/python -m app.restream_supervisor
 Restart=always
 RestartSec=5
 TimeoutStopSec=20
@@ -40,8 +40,8 @@ RemoveIPC=true
 LockPersonality=true
 CapabilityBoundingSet=
 AmbientCapabilities=
-ReadWritePaths=/opt/cricket-rtmp-node/logs
-ReadWritePaths=/opt/cricket-rtmp-node/run
+ReadWritePaths=/opt/arena-rtmp-node/logs
+ReadWritePaths=/opt/arena-rtmp-node/run
 
 [Install]
 WantedBy=multi-user.target

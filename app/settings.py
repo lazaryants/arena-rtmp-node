@@ -13,43 +13,43 @@ def environment_path(name, default):
 class Settings:
     project_root: Path = field(
         default_factory=lambda: environment_path(
-            "CRICKET_RTMP_ROOT",
-            "/opt/cricket-rtmp-node",
+            "ARENA_RTMP_ROOT",
+            "/opt/arena-rtmp-node",
         ),
     )
     public_host: str = field(
         default_factory=lambda: os.environ.get(
-            "CRICKET_RTMP_PUBLIC_HOST",
-            "rtmp.cricket-stream.icu",
+            "ARENA_RTMP_PUBLIC_HOST",
+            "rtmp.arena76.top",
         ),
     )
     hls_root: Path = field(
         default_factory=lambda: environment_path(
-            "CRICKET_RTMP_HLS_ROOT",
+            "ARENA_RTMP_HLS_ROOT",
             "/var/www/hls",
         ),
     )
     ffmpeg_bin: Path = field(
         default_factory=lambda: environment_path(
-            "CRICKET_RTMP_FFMPEG",
+            "ARENA_RTMP_FFMPEG",
             "/usr/bin/ffmpeg",
         ),
     )
     local_hls_origin: str = field(
         default_factory=lambda: os.environ.get(
-            "CRICKET_RTMP_LOCAL_HLS_ORIGIN",
+            "ARENA_RTMP_LOCAL_HLS_ORIGIN",
             "http://127.0.0.1/hls",
         ).rstrip("/"),
     )
     rtmp_stat_url: str = field(
         default_factory=lambda: os.environ.get(
-            "CRICKET_RTMP_STAT_URL",
+            "ARENA_RTMP_STAT_URL",
             "http://127.0.0.1:8090/stat",
         ),
     )
     auth_bind: str = field(
         default_factory=lambda: os.environ.get(
-            "CRICKET_RTMP_AUTH_BIND",
+            "ARENA_RTMP_AUTH_BIND",
             "127.0.0.1:8080",
         ),
     )
@@ -58,16 +58,16 @@ class Settings:
     def auth_address(self):
         host, separator, port_text = self.auth_bind.rpartition(":")
         if not separator or not host:
-            raise ValueError("CRICKET_RTMP_AUTH_BIND must use host:port")
+            raise ValueError("ARENA_RTMP_AUTH_BIND must use host:port")
         try:
             port = int(port_text)
         except ValueError as error:
             raise ValueError(
-                "CRICKET_RTMP_AUTH_BIND port must be an integer"
+                "ARENA_RTMP_AUTH_BIND port must be an integer"
             ) from error
         if not 1 <= port <= 65535:
             raise ValueError(
-                "CRICKET_RTMP_AUTH_BIND port must be between 1 and 65535"
+                "ARENA_RTMP_AUTH_BIND port must be between 1 and 65535"
             )
         return host, port
 
@@ -81,24 +81,24 @@ class Settings:
 
     @property
     def config_file(self):
-        configured = os.environ.get("CRICKET_RTMP_CONFIG")
+        configured = os.environ.get("ARENA_RTMP_CONFIG")
         return Path(configured) if configured else (
             self.project_root / "state" / "restream-config.json"
         )
 
     @property
     def run_dir(self):
-        configured = os.environ.get("CRICKET_RTMP_RUN_DIR")
+        configured = os.environ.get("ARENA_RTMP_RUN_DIR")
         return Path(configured) if configured else self.project_root / "run"
 
     @property
     def log_dir(self):
-        configured = os.environ.get("CRICKET_RTMP_LOG_DIR")
+        configured = os.environ.get("ARENA_RTMP_LOG_DIR")
         return Path(configured) if configured else self.project_root / "logs"
 
     @property
     def supervisor_socket(self):
-        configured = os.environ.get("CRICKET_RTMP_SUPERVISOR_SOCKET")
+        configured = os.environ.get("ARENA_RTMP_SUPERVISOR_SOCKET")
         return Path(configured) if configured else self.run_dir / "supervisor.sock"
 
     def pid_file(self, field_id, url_index):
