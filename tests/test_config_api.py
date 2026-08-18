@@ -53,6 +53,23 @@ class ConfigApiTests(unittest.TestCase):
             ["rtmps://destination.example/live/token"],
         )
 
+    def test_log_tail_is_bounded_and_returns_complete_last_lines(self):
+        log_path = Path(self.temporary_directory.name) / "large.log"
+        log_path.write_text(
+            ("old-line\n" * 30000)
+            + "recent-one\n"
+            + "recent-two\n",
+            encoding="utf-8",
+        )
+
+        lines = restream_manager.read_log_tail(
+            log_path,
+            line_count=2,
+            max_bytes=1024,
+        )
+
+        self.assertEqual(lines, ["recent-one", "recent-two"])
+
     @patch.object(restream_manager, "get_process_status")
     def test_status_snapshot_is_dynamic_and_does_not_expose_urls(
         self,
