@@ -63,6 +63,11 @@ class RenderNginxTests(unittest.TestCase):
             http,
         )
         self.assertIn(
+            "location = /api/session {\n"
+            "        proxy_pass ",
+            http,
+        )
+        self.assertIn(
             "location /api/node/ {\n"
             "        proxy_pass ",
             http,
