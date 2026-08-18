@@ -29,20 +29,23 @@ server {
     root @@WEB_ROOT@@;
     index index.html;
 
-    auth_basic "Restricted Access";
-    auth_basic_user_file @@BASIC_AUTH_FILE@@;
-
     location /admin {
+        auth_basic "Restricted Access";
+        auth_basic_user_file @@BASIC_AUTH_FILE@@;
         proxy_pass http://@@MANAGER_UPSTREAM@@/;
         include proxy_params;
     }
 
     location /config/ {
+        auth_basic "Restricted Access";
+        auth_basic_user_file @@BASIC_AUTH_FILE@@;
         proxy_pass http://@@MANAGER_UPSTREAM@@/config/;
         include proxy_params;
     }
 
     location /admin/api/config/ {
+        auth_basic "Restricted Access";
+        auth_basic_user_file @@BASIC_AUTH_FILE@@;
         proxy_pass http://@@MANAGER_UPSTREAM@@/api/config/;
         include proxy_params;
     }
@@ -58,6 +61,8 @@ server {
     }
 
     location /admin/api/ {
+        auth_basic "Restricted Access";
+        auth_basic_user_file @@BASIC_AUTH_FILE@@;
         proxy_pass http://@@MANAGER_UPSTREAM@@/api/;
         include proxy_params;
     }
