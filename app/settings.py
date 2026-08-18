@@ -113,6 +113,9 @@ class Settings:
     def log_file(self, field_id, url_index):
         return self.log_dir / f"restream_field{field_id}_{url_index}.log"
 
+    def progress_file(self, field_id, url_index):
+        return self.run_dir / f"restream_field{field_id}_{url_index}.progress"
+
     def ensure_runtime_directories(self):
         self.run_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.log_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
