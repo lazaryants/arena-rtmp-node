@@ -123,7 +123,12 @@ def access_denied(status_code, message):
     if status_code == 401:
         next_url = request.path if request.path != "/" else "/admin/"
         return redirect(f"/admin/login?next={next_url}")
-    return message, status_code
+    return render_template(
+        "access_denied.html",
+        message=message,
+        account=current_web_user(),
+        csrf_token=csrf_token(),
+    ), status_code
 
 
 @app.before_request

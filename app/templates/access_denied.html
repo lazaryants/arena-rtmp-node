@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Access denied · Arena RTMP Node</title>
+    <style>
+        {% include 'theme.css' %}
+        body { min-height: 100vh; display: grid; place-items: center; }
+        .access-card {
+            width: min(480px, calc(100% - 32px));
+            padding: 28px;
+            text-align: center;
+        }
+        .access-card h1 { margin: 0 0 8px; }
+        .access-card p { color: var(--text-muted); margin: 0 0 20px; }
+        .access-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <main class="panel access-card">
+        <h1>Access denied</h1>
+        <p>{{ message }}</p>
+        {% if account %}
+        <p>Signed in as {{ account.username }} · {{ account.role }}</p>
+        {% endif %}
+        <div class="access-actions">
+            <a class="btn btn-primary" href="/">Monitoring</a>
+            {% if account %}
+            <form action="/admin/logout" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="btn" type="submit">Sign in as another user</button>
+            </form>
+            {% endif %}
+        </div>
+    </main>
+</body>
+</html>

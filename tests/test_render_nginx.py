@@ -48,17 +48,20 @@ class RenderNginxTests(unittest.TestCase):
         self.assertIn("return 301 https://$host$request_uri;", http)
         self.assertNotIn("@@", rtmp + http)
 
-    def test_public_monitoring_keeps_admin_routes_basic_protected(self):
+    def test_application_rbac_replaces_nginx_basic_auth(self):
         temporary_directory, outputs = self.render_profile(self.profile())
         self.addCleanup(temporary_directory.cleanup)
 
         http = outputs["arena-rtmp-http.conf"]
-        self.assertEqual(
-            http.count('auth_basic "Restricted Access";'),
-            4,
-        )
+        self.assertNotIn('auth_basic "Restricted Access";', http)
+        self.assertNotIn("auth_basic_user_file", http)
         self.assertIn(
             "location = /api/fields {\n"
+            "        proxy_pass ",
+            http,
+        )
+        self.assertIn(
+            "location = /api/session {\n"
             "        proxy_pass ",
             http,
         )

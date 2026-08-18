@@ -210,6 +210,9 @@ class AccessControlTests(unittest.TestCase):
         self.store.set_user("operator", "Long-test-password", "operator")
         client = restream_manager.app.test_client()
 
+        template_directory = Path(__file__).resolve().parents[1] / (
+            "app/templates"
+        )
         with (
             patch.object(
                 restream_manager,
@@ -217,6 +220,11 @@ class AccessControlTests(unittest.TestCase):
                 SimpleNamespace(rbac_enabled=True),
             ),
             patch.object(restream_manager, "USER_STORE", self.store),
+            patch.object(
+                restream_manager.app,
+                "jinja_loader",
+                FileSystemLoader(template_directory),
+            ),
         ):
             with client.session_transaction() as browser_session:
                 browser_session["username"] = "operator"

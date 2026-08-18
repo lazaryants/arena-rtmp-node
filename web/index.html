@@ -18,8 +18,14 @@
         </div>
         <nav class="nav-menu" aria-label="Main navigation">
             <a href="/" class="active">Monitoring</a>
-            <a href="/config/">Configuration</a>
-            <a href="/admin/">Restreams</a>
+            <a href="/config/"
+               id="configurationNavLink"
+               data-minimum-role="admin"
+               hidden>Configuration</a>
+            <a href="/admin/"
+               id="restreamNavLink"
+               data-minimum-role="operator"
+               hidden>Restreams</a>
         </nav>
     </header>
 
@@ -46,6 +52,6 @@
     </div>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="script.js?v=2"></script>
+    <script src="script.js?v=3"></script>
 </body>
 </html>
