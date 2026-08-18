@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from app import restream_manager
 from app.config_store import ConfigStore
@@ -69,6 +69,79 @@ class ConfigApiTests(unittest.TestCase):
         )
 
         self.assertEqual(lines, ["recent-one", "recent-two"])
+
+    def fake_ffmpeg_process(self, create_time):
+        process = Mock()
+        process.is_running.return_value = True
+        process.status.return_value = restream_manager.psutil.STATUS_RUNNING
+        process.name.return_value = "ffmpeg"
+        process.create_time.return_value = create_time
+        return process
+
+    def test_process_is_starting_before_media_progress_arrives(self):
+        pid_file = Path(self.temporary_directory.name) / "restream.pid"
+        progress_file = Path(self.temporary_directory.name) / "restream.progress"
+        pid_file.write_text("321", encoding="utf-8")
+        process = self.fake_ffmpeg_process(create_time=95)
+
+        with (
+            patch.object(restream_manager.psutil, "Process", return_value=process),
+            patch.object(restream_manager.time, "time", return_value=100),
+        ):
+            status = restream_manager.get_process_status(
+                pid_file,
+                include_resources=False,
+                progress_file=progress_file,
+            )
+
+        self.assertEqual(status["status"], "starting")
+
+    def test_process_is_running_only_with_fresh_media_progress(self):
+        pid_file = Path(self.temporary_directory.name) / "restream.pid"
+        progress_file = Path(self.temporary_directory.name) / "restream.progress"
+        pid_file.write_text("321", encoding="utf-8")
+        progress_file.write_text(
+            "total_size=4096\nout_time_us=1000000\nprogress=continue\n",
+            encoding="utf-8",
+        )
+        process = self.fake_ffmpeg_process(create_time=50)
+
+        with (
+            patch.object(restream_manager.psutil, "Process", return_value=process),
+            patch.object(restream_manager.time, "time", return_value=100),
+            patch.object(restream_manager.os.path, "getmtime", return_value=99),
+        ):
+            status = restream_manager.get_process_status(
+                pid_file,
+                include_resources=False,
+                progress_file=progress_file,
+            )
+
+        self.assertEqual(status["status"], "running")
+
+    def test_process_without_recent_media_progress_is_error(self):
+        pid_file = Path(self.temporary_directory.name) / "restream.pid"
+        progress_file = Path(self.temporary_directory.name) / "restream.progress"
+        pid_file.write_text("321", encoding="utf-8")
+        progress_file.write_text(
+            "total_size=4096\nout_time_us=1000000\nprogress=continue\n",
+            encoding="utf-8",
+        )
+        process = self.fake_ffmpeg_process(create_time=50)
+
+        with (
+            patch.object(restream_manager.psutil, "Process", return_value=process),
+            patch.object(restream_manager.time, "time", return_value=100),
+            patch.object(restream_manager.os.path, "getmtime", return_value=80),
+        ):
+            status = restream_manager.get_process_status(
+                pid_file,
+                include_resources=False,
+                progress_file=progress_file,
+            )
+
+        self.assertEqual(status["status"], "error")
+        self.assertEqual(status["reason"], "No recent media output")
 
     @patch.object(restream_manager, "get_process_status")
     def test_status_snapshot_is_dynamic_and_does_not_expose_urls(
