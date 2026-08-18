@@ -125,14 +125,30 @@ def get_process_status(pid_file, include_resources=True):
     
     return {'status': 'stopped', 'pid': None, 'uptime': 0}
 
+def read_log_tail(log_file, line_count=100, max_bytes=131072):
+    """Read only a bounded tail instead of loading an unbounded FFmpeg log."""
+    path = os.fspath(log_file)
+    with open(path, 'rb') as source:
+        source.seek(0, os.SEEK_END)
+        size = source.tell()
+        source.seek(max(0, size - max_bytes))
+        payload = source.read(max_bytes)
+
+    text = payload.decode('utf-8', errors='replace')
+    lines = text.splitlines()
+    # A bounded read may start in the middle of a line.
+    if size > max_bytes and lines:
+        lines = lines[1:]
+    return lines[-line_count:]
+
+
 def get_delay_info(log_file):
     """Анализирует логи на предмет задержки"""
     if not os.path.exists(log_file):
         return {'delay': 0, 'drops': 0, 'errors': []}
     
     try:
-        with open(log_file, 'r') as f:
-            lines = f.readlines()[-100:]
+        lines = read_log_tail(log_file, line_count=100)
         
         drops = 0
         errors = []
@@ -321,11 +337,13 @@ def api_logs_specific(field_id, url_index):
         return jsonify({'logs': []})
     
     try:
-        with open(log_file, 'r') as f:
-            lines = [
-                redact_rtmp_urls(line)
-                for line in f.readlines()[-50:]
-            ]
+        lines = [
+            redact_rtmp_urls(line)
+            for line in read_log_tail(
+                log_file,
+                line_count=50,
+            )
+        ]
         return jsonify({'logs': lines})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
