@@ -30,7 +30,12 @@
         {% endif %}
         <div class="access-actions">
             <a class="btn btn-primary" href="/">Monitoring</a>
-            <a class="btn" href="/admin/">Restreams</a>
+            {% if account %}
+            <form action="/admin/logout" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="btn" type="submit">Sign in as another user</button>
+            </form>
+            {% endif %}
         </div>
     </main>
 </body>
