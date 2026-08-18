@@ -10,6 +10,8 @@ class MonitoringNavigationTests(unittest.TestCase):
         html = (PROJECT_ROOT / "web/index.html").read_text(
             encoding="utf-8",
         )
+        self.assertIn('id="signInNavLink"', html)
+        self.assertIn('href="/admin/login?next=/"', html)
         self.assertIn('id="configurationNavLink"', html)
         self.assertIn('data-minimum-role="admin"', html)
         self.assertIn('id="restreamNavLink"', html)
@@ -22,6 +24,11 @@ class MonitoringNavigationTests(unittest.TestCase):
         )
         self.assertIn("async function refreshNavigationAccess()", script)
         self.assertIn("fetch('/api/session'", script)
+        self.assertIn("getElementById('signInNavLink')", script)
+        self.assertIn(
+            "signInLink.hidden = legacyMode || payload.authenticated",
+            script,
+        )
         self.assertIn("operator: 1", script)
         self.assertIn("manager: 2", script)
         self.assertIn("admin: 3", script)
