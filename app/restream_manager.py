@@ -224,6 +224,42 @@ def index():
     return render_template('index.html', fields=fields_status)
 
 
+@app.route('/api/status')
+def api_restream_status():
+    """Return a secret-free status snapshot for dynamic admin updates."""
+    fields_status = {}
+
+    for field_id, field in get_fields().items():
+        destinations = []
+        running_count = 0
+
+        for url_index, _url in enumerate(field['urls']):
+            process = get_process_status(
+                SETTINGS.pid_file(field_id, url_index)
+            )
+            if process['status'] == 'running':
+                running_count += 1
+
+            destinations.append({
+                'index': url_index,
+                'status': process['status'],
+                'uptime': process.get('uptime', 0),
+                'cpu': process.get('cpu'),
+                'memory': process.get('memory'),
+            })
+
+        fields_status[str(field_id)] = {
+            'running_count': running_count,
+            'total_count': len(destinations),
+            'destinations': destinations,
+        }
+
+    return jsonify({
+        'success': True,
+        'fields': fields_status,
+    })
+
+
 # ===== RESTREAM API =====
 
 @app.route('/api/start/<int:field_id>', methods=['POST'])
