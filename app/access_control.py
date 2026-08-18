@@ -97,8 +97,23 @@ class UserStore:
         username = username.strip()
         if role not in ROLES:
             raise UserStoreError("Invalid user role")
-        if len(password) < 12:
-            raise UserStoreError("Password must contain at least 12 characters")
+        if len(password) < 8:
+            raise UserStoreError("Password must contain at least 8 characters")
+        if not any(character.islower() for character in password):
+            raise UserStoreError(
+                "Password must contain at least one lowercase letter"
+            )
+        if not any(character.isupper() for character in password):
+            raise UserStoreError(
+                "Password must contain at least one uppercase letter"
+            )
+        if not any(
+            not character.isalnum() and not character.isspace()
+            for character in password
+        ):
+            raise UserStoreError(
+                "Password must contain at least one special character"
+            )
         payload = self.load()
         payload["users"][username] = {
             "password_hash": generate_password_hash(password),
