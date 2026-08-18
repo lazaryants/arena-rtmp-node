@@ -127,6 +127,7 @@ def access_denied(status_code, message):
         "access_denied.html",
         message=message,
         account=current_web_user(),
+        csrf_token=csrf_token(),
     ), status_code
 
 
