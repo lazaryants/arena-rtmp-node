@@ -396,8 +396,24 @@
             const stopAll = document.getElementById(
                 `stop-all-${fieldId}`
             );
-            if (startAll) startAll.disabled = runningCount === totalCount;
-            if (stopAll) stopAll.disabled = runningCount === 0;
+            const fieldBusy = Array.from(
+                pendingRestreamActions.entries()
+            ).some(([key, action]) => (
+                key.startsWith(`${fieldId}:`)
+                && (
+                    action.state === 'starting'
+                    || action.state === 'stopping'
+                )
+            ));
+            if (startAll) {
+                startAll.disabled = (
+                    fieldBusy
+                    || runningCount === totalCount
+                );
+            }
+            if (stopAll) {
+                stopAll.disabled = fieldBusy || runningCount === 0;
+            }
         }
 
         async function refreshRestreamStatus() {
