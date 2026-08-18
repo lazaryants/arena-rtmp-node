@@ -94,6 +94,8 @@ def template_access_context():
 def minimum_role_for_request():
     """Map manager routes to their least privileged supported role."""
     path = request.path
+    if path == "/logout":
+        return "viewer"
     if path.startswith("/api/config/") or path == "/config/":
         return "admin"
     if path.startswith("/api/restream-urls/"):
