@@ -95,7 +95,7 @@ def enforce_role_access():
     """Apply RBAC only after the node administrator explicitly enables it."""
     if not SETTINGS.rbac_enabled:
         return None
-    if request.endpoint in {"login", "api_node_health"}:
+    if request.endpoint in {"login", "api_node_health", "api_session"}:
         return None
 
     account = current_web_user()
