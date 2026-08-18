@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, session
 import os
 import json
 import re
@@ -13,21 +13,34 @@ try:
     from .monitoring import health_snapshot, metrics_snapshot
     from .config_store import ConfigStore, ConfigValidationError
     from .supervisor_client import SupervisorClient, SupervisorUnavailable
+    from .access_control import UserStore, UserStoreError, role_allows
 except ImportError:
     from settings import SETTINGS
     from monitoring import health_snapshot, metrics_snapshot
     from config_store import ConfigStore, ConfigValidationError
     from supervisor_client import SupervisorClient, SupervisorUnavailable
+    from access_control import UserStore, UserStoreError, role_allows
 
 app = Flask(
     __name__,
     template_folder=str(SETTINGS.template_dir),
+)
+if SETTINGS.rbac_enabled and len(SETTINGS.session_secret) < 32:
+    raise RuntimeError(
+        "ARENA_RTMP_SESSION_SECRET must contain at least 32 characters "
+        "when RBAC is enabled"
+    )
+app.secret_key = SETTINGS.session_secret or secrets.token_hex(32)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
 )
 
 # ===== КОНФИГУРАЦИЯ =====
 CONFIG_FILE = SETTINGS.config_file
 CONFIG_STORE = ConfigStore(CONFIG_FILE)
 SUPERVISOR_CLIENT = SupervisorClient(SETTINGS.supervisor_socket)
+USER_STORE = UserStore(SETTINGS.users_file)
 
 RTMP_URL_PATTERN = re.compile(
     r"rtmps?://\S+",
@@ -36,6 +49,120 @@ RTMP_URL_PATTERN = re.compile(
 
 RESTREAM_START_GRACE_SECONDS = 15
 RESTREAM_PROGRESS_STALE_SECONDS = 8
+
+
+def current_web_user():
+    """Return the current enabled account or revoke a stale session."""
+    username = session.get("username")
+    if not username:
+        return None
+    try:
+        account = USER_STORE.current_account(username)
+    except UserStoreError:
+        account = None
+    if account is None:
+        session.clear()
+    return account
+
+
+def minimum_role_for_request():
+    """Map manager routes to their least privileged supported role."""
+    path = request.path
+    if path.startswith("/api/config/") or path == "/config/":
+        return "admin"
+    if path.startswith("/api/restream-urls/"):
+        return "manager"
+    if path.startswith(("/api/start/", "/api/stop/", "/api/restart/")):
+        return "operator"
+    if path.startswith(("/api/status", "/api/logs/", "/api/node/metrics")):
+        return "viewer"
+    if path == "/":
+        return "operator"
+    return "admin"
+
+
+def access_denied(status_code, message):
+    if request.path.startswith("/api/"):
+        return jsonify({"success": False, "message": message}), status_code
+    if status_code == 401:
+        next_url = request.path if request.path != "/" else "/admin/"
+        return redirect(f"/admin/login?next={next_url}")
+    return message, status_code
+
+
+@app.before_request
+def enforce_role_access():
+    """Apply RBAC only after the node administrator explicitly enables it."""
+    if not SETTINGS.rbac_enabled:
+        return None
+    if request.endpoint in {"login", "api_node_health", "api_session"}:
+        return None
+
+    account = current_web_user()
+    if account is None:
+        return access_denied(401, "Authentication required")
+
+    minimum_role = minimum_role_for_request()
+    if not role_allows(account["role"], minimum_role):
+        return access_denied(403, "Insufficient permissions")
+    return None
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    """Create a signed application session from the protected user store."""
+    if not SETTINGS.rbac_enabled:
+        return redirect("/admin/")
+
+    error = None
+    next_url = request.values.get("next", "/admin/")
+    if not (
+        next_url.startswith("/")
+        and not next_url.startswith("//")
+    ):
+        next_url = "/admin/"
+
+    if request.method == "POST":
+        try:
+            account = USER_STORE.authenticate(
+                request.form.get("username", "").strip(),
+                request.form.get("password", ""),
+            )
+        except UserStoreError:
+            account = None
+        if account is not None:
+            session.clear()
+            session["username"] = account["username"]
+            return redirect(next_url)
+        error = "Invalid username or password"
+
+    return render_template(
+        "login.html",
+        error=error,
+        next_url=next_url,
+    )
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return redirect("/admin/login")
+
+
+@app.route("/api/session")
+def api_session():
+    account = current_web_user()
+    if account is None:
+        return jsonify({
+            "authenticated": False,
+            "rbac_enabled": SETTINGS.rbac_enabled,
+        }), 401 if SETTINGS.rbac_enabled else 200
+    return jsonify({
+        "authenticated": True,
+        "rbac_enabled": SETTINGS.rbac_enabled,
+        "username": account["username"],
+        "role": account["role"],
+    })
 
 
 @app.route('/api/node/health')

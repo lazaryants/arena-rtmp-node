@@ -21,6 +21,8 @@ class SettingsTests(unittest.TestCase):
                 self.assertEqual(settings.run_dir, root / "run")
                 self.assertEqual(settings.log_dir, root / "logs")
                 self.assertEqual(settings.template_dir, root / "app/templates")
+                self.assertEqual(settings.users_file, root / "state/users.json")
+                self.assertFalse(settings.rbac_enabled)
 
     def test_explicit_overrides_are_respected(self):
         environment = {
@@ -32,6 +34,9 @@ class SettingsTests(unittest.TestCase):
             "ARENA_RTMP_LOCAL_HLS_ORIGIN": "http://127.0.0.1:18081/hls/",
             "ARENA_RTMP_LOCAL_RTMP_ORIGIN": "rtmp://127.0.0.1:19350/",
             "ARENA_RTMP_AUTH_BIND": "127.0.0.1:18080",
+            "ARENA_RTMP_USERS_FILE": "/var/lib/node/users.json",
+            "ARENA_RTMP_RBAC_ENABLED": "true",
+            "ARENA_RTMP_SESSION_SECRET": "x" * 32,
         }
         with patch.dict(os.environ, environment, clear=True):
             settings = Settings()
@@ -48,6 +53,9 @@ class SettingsTests(unittest.TestCase):
                 "rtmp://127.0.0.1:19350",
             )
             self.assertEqual(settings.auth_address, ("127.0.0.1", 18080))
+            self.assertEqual(settings.users_file, Path("/var/lib/node/users.json"))
+            self.assertTrue(settings.rbac_enabled)
+            self.assertEqual(settings.session_secret, "x" * 32)
 
     def test_auth_bind_defaults_to_loopback_port_8080(self):
         with patch.dict(os.environ, {}, clear=True):

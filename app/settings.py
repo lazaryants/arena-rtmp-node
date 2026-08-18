@@ -9,6 +9,13 @@ def environment_path(name, default):
     return Path(os.environ.get(name, default)).expanduser()
 
 
+def environment_flag(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 @dataclass(frozen=True)
 class Settings:
     project_root: Path = field(
@@ -53,6 +60,18 @@ class Settings:
             "http://127.0.0.1:8090/stat",
         ),
     )
+    rbac_enabled: bool = field(
+        default_factory=lambda: environment_flag(
+            "ARENA_RTMP_RBAC_ENABLED",
+            False,
+        ),
+    )
+    session_secret: str = field(
+        default_factory=lambda: os.environ.get(
+            "ARENA_RTMP_SESSION_SECRET",
+            "",
+        ),
+    )
     auth_bind: str = field(
         default_factory=lambda: os.environ.get(
             "ARENA_RTMP_AUTH_BIND",
@@ -90,6 +109,13 @@ class Settings:
         configured = os.environ.get("ARENA_RTMP_CONFIG")
         return Path(configured) if configured else (
             self.project_root / "state" / "restream-config.json"
+        )
+
+    @property
+    def users_file(self):
+        configured = os.environ.get("ARENA_RTMP_USERS_FILE")
+        return Path(configured) if configured else (
+            self.project_root / "state" / "users.json"
         )
 
     @property
