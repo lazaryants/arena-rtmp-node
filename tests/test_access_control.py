@@ -122,6 +122,24 @@ class AccessControlTests(unittest.TestCase):
                         "admin",
                     )
 
+    def test_public_monitoring_endpoints_bypass_login(self):
+        paths = (
+            "/api/config/fields",
+            "/api/config/fields/status",
+            "/api/node/metrics",
+        )
+        with patch.object(
+            restream_manager,
+            "SETTINGS",
+            SimpleNamespace(rbac_enabled=True),
+        ):
+            for path in paths:
+                with self.subTest(path=path):
+                    with restream_manager.app.test_request_context(path):
+                        self.assertIsNone(
+                            restream_manager.app.preprocess_request()
+                        )
+
     def test_unauthenticated_api_is_rejected_when_enabled(self):
         with (
             patch.object(
