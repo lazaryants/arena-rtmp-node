@@ -5,13 +5,16 @@ import argparse
 import getpass
 import json
 import sys
+from pathlib import Path
 
-try:
-    from app.access_control import ROLES, UserStore, UserStoreError
-    from app.settings import SETTINGS
-except ImportError:
-    from access_control import ROLES, UserStore, UserStoreError
-    from settings import SETTINGS
+# Support both "python scripts/manage_users.py" and module execution without
+# requiring callers to maintain a project-specific PYTHONPATH.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from app.access_control import ROLES, UserStore, UserStoreError
+from app.settings import SETTINGS
 
 
 def build_parser():
