@@ -1,3 +1,7 @@
+import json
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -129,6 +133,52 @@ class AccessControlTests(unittest.TestCase):
         self.assertEqual(response.headers["Location"], "/admin/")
         self.assertEqual(session_response.status_code, 200)
         self.assertEqual(session_response.get_json()["role"], "operator")
+
+    def test_user_cli_runs_without_project_pythonpath(self):
+        project_root = Path(__file__).resolve().parents[1]
+        environment = os.environ.copy()
+        environment.pop("PYTHONPATH", None)
+        environment["ARENA_RTMP_ROOT"] = self.temporary_directory.name
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(project_root / "scripts/manage_users.py"),
+                "set",
+                "cli-admin",
+                "--role",
+                "admin",
+                "--password-stdin",
+            ],
+            input="long-cli-password\n",
+            text=True,
+            capture_output=True,
+            cwd="/tmp",
+            env=environment,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+        listed = subprocess.run(
+            [
+                sys.executable,
+                str(project_root / "scripts/manage_users.py"),
+                "list",
+            ],
+            text=True,
+            capture_output=True,
+            cwd="/tmp",
+            env=environment,
+            check=False,
+        )
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertEqual(
+            json.loads(listed.stdout),
+            [{
+                "username": "cli-admin",
+                "role": "admin",
+                "enabled": True,
+            }],
+        )
 
 
 if __name__ == "__main__":
