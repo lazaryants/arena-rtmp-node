@@ -88,8 +88,8 @@ def serialized_config_write(function):
             return function(*args, **kwargs)
     return wrapped
 
-def get_process_status(pid_file):
-    """Проверяет статус процесса по PID файлу"""
+def get_process_status(pid_file, include_resources=True):
+    """Check an FFmpeg PID file, optionally collecting slower resource data."""
     if not os.path.exists(pid_file):
         return {'status': 'stopped', 'pid': None, 'uptime': 0}
     
@@ -103,19 +103,21 @@ def get_process_status(pid_file):
             and process.status() != psutil.STATUS_ZOMBIE
             and "ffmpeg" in process.name().lower()
         ):
-            create_time = process.create_time()
-            uptime = int(time.time() - create_time)
-            cpu_percent = process.cpu_percent(interval=0.1)
-            memory_info = process.memory_info()
-            memory_mb = memory_info.rss / 1024 / 1024
-            
-            return {
+            result = {
                 'status': 'running',
                 'pid': pid,
-                'uptime': uptime,
-                'cpu': cpu_percent,
-                'memory': round(memory_mb, 2)
+                'uptime': int(time.time() - process.create_time()),
             }
+            if include_resources:
+                memory_info = process.memory_info()
+                result.update({
+                    'cpu': process.cpu_percent(interval=0.1),
+                    'memory': round(
+                        memory_info.rss / 1024 / 1024,
+                        2,
+                    ),
+                })
+            return result
     except (OSError, psutil.NoSuchProcess, psutil.AccessDenied, ValueError):
         # Runtime files belong to the dedicated supervisor. The manager is
         # deliberately read-only here and must tolerate stale PID files.
@@ -235,7 +237,8 @@ def api_restream_status():
 
         for url_index, _url in enumerate(field['urls']):
             process = get_process_status(
-                SETTINGS.pid_file(field_id, url_index)
+                SETTINGS.pid_file(field_id, url_index),
+                include_resources=False,
             )
             if process['status'] == 'running':
                 running_count += 1
