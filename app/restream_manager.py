@@ -7,6 +7,7 @@ import time
 import psutil
 import secrets
 from functools import wraps
+from urllib.parse import urlencode
 
 try:
     from .settings import SETTINGS
@@ -814,6 +815,19 @@ def api_config_fields_status():
     return jsonify(status)
 
 
+def camera_publish_url(field_id, field):
+    """Build the complete camera URL without logging its secret."""
+    stream_key = field.get("stream_key", f"stream{field_id}")
+    base_url = (
+        f"rtmp://{SETTINGS.public_host}/"
+        f"place{field_id}/{stream_key}"
+    )
+    key = field.get("key")
+    if not key:
+        return base_url
+    return f"{base_url}?{urlencode({'key': key})}"
+
+
 @app.route('/api/config/fields/all')
 def api_config_fields_all():
     """API: получить все поля (для страницы конфигурации)"""
@@ -825,6 +839,7 @@ def api_config_fields_all():
         field_copy = v.copy()
         stream_key = v.get('stream_key', f'stream{k}')
         field_copy['rtmp_url'] = f"rtmp://{SETTINGS.public_host}/place{k}/{stream_key}"
+        field_copy['publish_url'] = camera_publish_url(k, v)
         field_copy['hls_url'] = f"/hls/place{k}/{stream_key}.m3u8"
         field_copy['stream_key'] = stream_key
         all_fields[k] = field_copy
@@ -851,7 +866,7 @@ def api_config_create_field():
             return jsonify({'success': False, 'message': 'All 16 slots are used!'}), 400
         
         new_id = str(free_slot)
-        random_key = secrets.token_urlsafe(8)
+        random_key = secrets.token_urlsafe(24)
         stream_key = data.get('stream_key', f'stream{new_id}').strip()
         
         if not stream_key:
@@ -893,7 +908,10 @@ def api_config_update_field(field_id):
         if 'enabled' in data:
             field['enabled'] = data['enabled']
         if 'key' in data:
-            field['key'] = data['key']
+            return jsonify({
+                'success': False,
+                'message': 'Use the dedicated key rotation endpoint',
+            }), 400
         
         # Обновляем stream_key если передан
         if 'stream_key' in data:
@@ -911,6 +929,37 @@ def api_config_update_field(field_id):
         return jsonify({'success': False, 'message': str(error)}), 400
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route(
+    '/api/config/fields/<field_id>/rotate-key',
+    methods=['POST'],
+)
+@serialized_config_write
+def api_config_rotate_key(field_id):
+    """Atomically replace a camera publish key and revoke the old key."""
+    try:
+        config = load_config()
+        field = config.get('fields', {}).get(field_id)
+        if field is None:
+            return jsonify({
+                'success': False,
+                'message': 'Field not found',
+            }), 404
+
+        field['key'] = secrets.token_urlsafe(24)
+        save_config(config)
+        return jsonify({
+            'success': True,
+            'message': (
+                'Publish key rotated. Update the camera before '
+                'restarting its RTMP client.'
+            ),
+            'key': field['key'],
+            'publish_url': camera_publish_url(field_id, field),
+        })
+    except ConfigValidationError as error:
+        return jsonify({'success': False, 'message': str(error)}), 400
 
 
 @app.route('/api/config/fields/<field_id>', methods=['DELETE'])

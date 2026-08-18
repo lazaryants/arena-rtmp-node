@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
+from urllib.parse import parse_qs, urlparse
 
 from app import restream_manager
 from app.config_store import ConfigStore
@@ -32,6 +33,50 @@ class ConfigApiTests(unittest.TestCase):
     def tearDown(self):
         self.store_patch.stop()
         self.temporary_directory.cleanup()
+
+    def test_full_config_includes_complete_camera_publish_url(self):
+        response = self.client.get("/api/config/fields/all")
+
+        self.assertEqual(response.status_code, 200)
+        field = response.get_json()["1"]
+        parsed = urlparse(field["publish_url"])
+        self.assertEqual(parsed.scheme, "rtmp")
+        self.assertEqual(parsed.hostname, "rtmp.arena76.top")
+        self.assertEqual(parsed.path, "/place1/stream1")
+        self.assertEqual(parse_qs(parsed.query), {"key": ["publish-key"]})
+
+    def test_server_side_key_rotation_revokes_old_key(self):
+        response = self.client.post("/api/config/fields/1/rotate-key")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        stored_key = self.store.load()["fields"]["1"]["key"]
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["key"], stored_key)
+        self.assertNotEqual(stored_key, "publish-key")
+        self.assertGreaterEqual(len(stored_key), 32)
+        self.assertEqual(
+            parse_qs(urlparse(payload["publish_url"]).query),
+            {"key": [stored_key]},
+        )
+        self.assertNotIn(
+            "publish-key",
+            response.get_data(as_text=True),
+        )
+
+    def test_generic_update_cannot_replace_publish_key(self):
+        original = self.path.read_bytes()
+        response = self.client.put(
+            "/api/config/fields/1",
+            json={"key": "browser-generated-key"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.path.read_bytes(), original)
+        self.assertEqual(
+            response.get_json()["message"],
+            "Use the dedicated key rotation endpoint",
+        )
 
     def test_rejects_invalid_destination_without_changing_config(self):
         original = self.path.read_bytes()

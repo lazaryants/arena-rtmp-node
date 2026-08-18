@@ -109,6 +109,7 @@ class AccessControlTests(unittest.TestCase):
             ("GET", "/api/config/fields/all"),
             ("POST", "/api/config/fields"),
             ("PUT", "/api/config/fields/1"),
+            ("POST", "/api/config/fields/1/rotate-key"),
             ("DELETE", "/api/config/fields/1"),
         )
         for method, path in requests:
