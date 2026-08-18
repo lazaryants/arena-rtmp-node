@@ -325,9 +325,13 @@
                 <div class="url-header">
                     <span class="url-number">Destination #{{ url_data.index + 1 }}</span>
                     <span id="url-status-{{ field_id }}-{{ url_data.index }}"
-                          class="url-status {% if url_data.status.status == 'running' %}running{% else %}stopped{% endif %}">
+                          class="url-status {{ url_data.status.status }}">
                         {% if url_data.status.status == 'running' %}
                             🟢 RUNNING
+                        {% elif url_data.status.status == 'starting' %}
+                            🟠 STARTING
+                        {% elif url_data.status.status == 'error' %}
+                            🔴 ERROR
                         {% else %}
                             ⚫ STOPPED
                         {% endif %}
@@ -347,13 +351,13 @@
                     <button class="btn btn-start"
                             id="start-{{ field_id }}-{{ url_data.index }}"
                             onclick="controlUrl({{ field_id }}, {{ url_data.index }}, 'start')"
-                            {% if url_data.status.status == 'running' or not url_data.url %}disabled{% endif %}>
+                            {% if url_data.status.status != 'stopped' or not url_data.url %}disabled{% endif %}>
                         ▶ Start
                     </button>
                     <button class="btn btn-stop"
                             id="stop-{{ field_id }}-{{ url_data.index }}"
                             onclick="controlUrl({{ field_id }}, {{ url_data.index }}, 'stop')"
-                            {% if url_data.status.status != 'running' %}disabled{% endif %}>
+                            {% if url_data.status.status == 'stopped' %}disabled{% endif %}>
                         ⏹ Stop
                     </button>
                     <button class="btn btn-delete" 
@@ -608,12 +612,14 @@
             status.className = `url-status ${state}`;
             status.textContent = labels[state] || labels.stopped;
 
-            const busy = state === 'starting' || state === 'stopping';
             if (startButton) {
-                startButton.disabled = busy || state === 'running';
+                startButton.disabled = state !== 'stopped';
             }
             if (stopButton) {
-                stopButton.disabled = busy || state !== 'running';
+                stopButton.disabled = (
+                    state === 'stopped'
+                    || state === 'stopping'
+                );
             }
         }
 
@@ -692,7 +698,10 @@
                             if (pending) {
                                 const completed = (
                                     pending.state === 'starting'
-                                    && state === 'running'
+                                    && (
+                                        state === 'running'
+                                        || state === 'error'
+                                    )
                                 ) || (
                                     pending.state === 'stopping'
                                     && state === 'stopped'
