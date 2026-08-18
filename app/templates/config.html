@@ -194,6 +194,19 @@
         .stream-status.active { background: rgba(76, 175, 80, 0.3); border: 2px solid #4CAF50; }
         .stream-status.stale { background: rgba(255, 152, 0, 0.3); border: 2px solid #ff9800; }
         .stream-status.no-signal { background: rgba(158, 158, 158, 0.3); border: 2px solid #9e9e9e; }
+        .credential-warning {
+            padding: 14px;
+            margin: 15px 0;
+            border: 1px solid #ff9800;
+            border-radius: 8px;
+            background: rgba(255, 152, 0, 0.15);
+            line-height: 1.5;
+        }
+        .publish-url-value {
+            display: inline-block;
+            max-width: 100%;
+            text-align: left;
+        }
         @media (max-width: 768px) {
             .fields-grid { grid-template-columns: 1fr; }
             .header h1 { font-size: 1.8em; }
@@ -299,9 +312,34 @@
             </div>
         </div>
     </div>
+    <div id="rotateKeyModal"
+         class="modal"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="rotateKeyTitle">
+        <div class="modal-content">
+            <h2 id="rotateKeyTitle">Rotate publish key</h2>
+            <p id="rotateKeyFieldName"></p>
+            <div class="credential-warning">
+                The current camera URL will stop working immediately.
+                Copy the new full URL, update the camera, and restart its
+                RTMP client.
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary"
+                        type="button"
+                        onclick="closeRotateKeyModal()">Cancel</button>
+                <button class="btn btn-danger"
+                        type="button"
+                        id="rotateKeyConfirmButton"
+                        onclick="confirmKeyRotation()">Rotate key</button>
+            </div>
+        </div>
+    </div>
     <script>
         const CSRF_TOKEN = {{ csrf_token | tojson }};
         let fields = {};
+        let rotateFieldId = null;
         const CONFIG_LAYOUT_KEY = 'arena-config-columns';
         function setConfigColumns(value) {
             const columns = ['2', '3', '4'].includes(String(value))
@@ -344,6 +382,14 @@
                 showAlert('Failed to load fields: ' + error.message, 'error');
             }
         }
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
         function renderFields() {
             const grid = document.getElementById('fieldsGrid');
             const total = Object.keys(fields).length;
@@ -360,6 +406,10 @@
             grid.innerHTML = Object.entries(fields).map(([id, field]) => {
                 const baseUrl = field.rtmp_url.replace(/\/[^\/]+$/, '');
                 const streamKey = field.stream_key || `stream${id}`;
+                const safeBaseUrl = escapeHtml(baseUrl);
+                const safeStreamKey = escapeHtml(streamKey);
+                const safeSecretKey = escapeHtml(field.key || '');
+                const safePublishUrl = escapeHtml(field.publish_url || '');
                 
                 let statusBadge = '';
                 if (field.stream_status === 'active') {
@@ -388,23 +438,31 @@
                     <div class="field-row">
                         <span class="field-label">📡 RTMP URL:</span>
                         <span class="field-value">
-                            ${baseUrl}
-                            <button class="copy-btn" onclick="copyToClipboard('${baseUrl}')">📋</button>
+                            ${safeBaseUrl}
+                            <button class="copy-btn" onclick="copyBaseUrl('${id}')">📋</button>
                         </span>
                     </div>
                     <div class="field-row">
                         <span class="field-label">🔑 Stream Key:</span>
                         <span class="field-value">
-                            ${streamKey}
-                            <button class="copy-btn" onclick="copyToClipboard('${streamKey}')">📋</button>
+                            ${safeStreamKey}
+                            <button class="copy-btn" onclick="copyStreamKey('${id}')">📋</button>
                         </span>
                     </div>
                     ${field.key ? `
                     <div class="field-row">
                         <span class="field-label">🔐 Secret Key:</span>
                         <span class="field-value">
-                            ${field.key}
-                            <button class="copy-btn" onclick="regenerateKey('${id}')">🔄</button>
+                            ${safeSecretKey}
+                            <button class="copy-btn" onclick="copySecretKey('${id}')">📋</button>
+                            <button class="copy-btn" onclick="openRotateKeyModal('${id}')">🔄 Rotate</button>
+                        </span>
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">📷 Full camera URL:</span>
+                        <span class="field-value publish-url-value">
+                            ${safePublishUrl}
+                            <button class="copy-btn" onclick="copyPublishUrl('${id}')">📋 Copy</button>
                         </span>
                     </div>
                     ` : ''}
@@ -524,34 +582,63 @@
                 showAlert('Error: ' + error.message, 'error');
             }
         }
-        async function regenerateKey(id) {
-            if (!confirm('Generate a new random key for this field?')) return;
-            
+        function copyBaseUrl(id) {
+            const field = fields[id];
+            copyToClipboard(field.rtmp_url.replace(/\/[^\/]+$/, ''));
+        }
+        function copyStreamKey(id) {
+            copyToClipboard(fields[id].stream_key || `stream${id}`);
+        }
+        function copySecretKey(id) {
+            copyToClipboard(fields[id].key);
+        }
+        function copyPublishUrl(id) {
+            copyToClipboard(fields[id].publish_url);
+        }
+        function openRotateKeyModal(id) {
+            const field = fields[id];
+            if (!field) return;
+            rotateFieldId = id;
+            document.getElementById('rotateKeyFieldName').textContent = (
+                `${field.name} · place${id}`
+            );
+            document.getElementById('rotateKeyModal').classList.add('active');
+        }
+        function closeRotateKeyModal() {
+            rotateFieldId = null;
+            document.getElementById('rotateKeyModal').classList.remove('active');
+        }
+        async function confirmKeyRotation() {
+            const id = rotateFieldId;
+            if (!id) return;
+            const button = document.getElementById(
+                'rotateKeyConfirmButton'
+            );
+            button.disabled = true;
+
             try {
-                const response = await fetch(`/admin/api/config/fields/${id}`, {
-                    method: 'PUT',
-                    headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-Token': CSRF_TOKEN
-                        },
-                    body: JSON.stringify({ key: generateRandomKey() })
-                });
+                const response = await fetch(
+                    `/admin/api/config/fields/${id}/rotate-key`,
+                    {
+                        method: 'POST',
+                        headers: {'X-CSRF-Token': CSRF_TOKEN}
+                    }
+                );
                 const result = await response.json();
-                if (result.success) {
-                    showAlert('Key regenerated', 'success');
-                    loadFields();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Key rotation failed');
                 }
+
+                fields[id].key = result.key;
+                fields[id].publish_url = result.publish_url;
+                closeRotateKeyModal();
+                renderFields();
+                showAlert(result.message, 'success');
             } catch (error) {
                 showAlert('Error: ' + error.message, 'error');
+            } finally {
+                button.disabled = false;
             }
-        }
-        function generateRandomKey() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-            let result = '';
-            for (let i = 0; i < 12; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return result;
         }
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
