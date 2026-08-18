@@ -34,6 +34,9 @@ RTMP_URL_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+RESTREAM_START_GRACE_SECONDS = 15
+RESTREAM_PROGRESS_STALE_SECONDS = 8
+
 
 @app.route('/api/node/health')
 def api_node_health():
@@ -88,26 +91,79 @@ def serialized_config_write(function):
             return function(*args, **kwargs)
     return wrapped
 
-def get_process_status(pid_file, include_resources=True):
-    """Check an FFmpeg PID file, optionally collecting slower resource data."""
+def read_ffmpeg_progress(progress_file):
+    """Read the latest non-secret FFmpeg progress counters."""
+    try:
+        path = os.fspath(progress_file)
+        values = {}
+        with open(path, 'r', encoding='utf-8', errors='replace') as source:
+            for raw_line in source:
+                key, separator, value = raw_line.strip().partition('=')
+                if separator and key:
+                    values[key] = value
+
+        return {
+            'age': max(0.0, time.time() - os.path.getmtime(path)),
+            'total_size': int(values.get('total_size', '0') or 0),
+            'out_time_us': int(values.get('out_time_us', '0') or 0),
+            'speed': values.get('speed'),
+        }
+    except (OSError, TypeError, ValueError):
+        return None
+
+
+def get_process_status(
+    pid_file,
+    include_resources=True,
+    progress_file=None,
+):
+    """Classify FFmpeg by process lifetime and actual output progress."""
     if not os.path.exists(pid_file):
         return {'status': 'stopped', 'pid': None, 'uptime': 0}
-    
+
     try:
-        with open(pid_file, 'r') as f:
-            pid = int(f.read().strip())
-        
+        with open(pid_file, 'r') as source:
+            pid = int(source.read().strip())
+
         process = psutil.Process(pid)
         if (
             process.is_running()
             and process.status() != psutil.STATUS_ZOMBIE
             and "ffmpeg" in process.name().lower()
         ):
+            uptime = max(0, int(time.time() - process.create_time()))
+            state = 'running'
+            reason = None
+
+            if progress_file is not None:
+                progress = read_ffmpeg_progress(progress_file)
+                has_output = bool(
+                    progress
+                    and (
+                        progress['total_size'] > 0
+                        or progress['out_time_us'] > 0
+                    )
+                )
+                progress_is_fresh = bool(
+                    progress
+                    and progress['age'] <= RESTREAM_PROGRESS_STALE_SECONDS
+                )
+
+                if has_output and progress_is_fresh:
+                    state = 'running'
+                elif uptime <= RESTREAM_START_GRACE_SECONDS:
+                    state = 'starting'
+                else:
+                    state = 'error'
+                    reason = 'No recent media output'
+
             result = {
-                'status': 'running',
+                'status': state,
                 'pid': pid,
-                'uptime': int(time.time() - process.create_time()),
+                'uptime': uptime,
             }
+            if reason:
+                result['reason'] = reason
             if include_resources:
                 memory_info = process.memory_info()
                 result.update({
@@ -122,8 +178,9 @@ def get_process_status(pid_file, include_resources=True):
         # Runtime files belong to the dedicated supervisor. The manager is
         # deliberately read-only here and must tolerate stale PID files.
         pass
-    
+
     return {'status': 'stopped', 'pid': None, 'uptime': 0}
+
 
 def read_log_tail(log_file, line_count=100, max_bytes=131072):
     """Read only a bounded tail instead of loading an unbounded FFmpeg log."""
@@ -220,7 +277,10 @@ def index():
         for idx, url in enumerate(field['urls']):
             pid_file = SETTINGS.pid_file(field_id, idx)
             log_file = SETTINGS.log_file(field_id, idx)
-            status = get_process_status(pid_file)
+            status = get_process_status(
+                pid_file,
+                progress_file=SETTINGS.progress_file(field_id, idx),
+            )
             delay_info = get_delay_info(log_file)
             url_statuses.append({
                 'url': url,
@@ -255,6 +315,10 @@ def api_restream_status():
             process = get_process_status(
                 SETTINGS.pid_file(field_id, url_index),
                 include_resources=False,
+                progress_file=SETTINGS.progress_file(
+                    field_id,
+                    url_index,
+                ),
             )
             if process['status'] == 'running':
                 running_count += 1
@@ -265,6 +329,7 @@ def api_restream_status():
                 'uptime': process.get('uptime', 0),
                 'cpu': process.get('cpu'),
                 'memory': process.get('memory'),
+                'reason': process.get('reason'),
             })
 
         fields_status[str(field_id)] = {
