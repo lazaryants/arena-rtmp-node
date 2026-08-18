@@ -96,6 +96,14 @@ def minimum_role_for_request():
     path = request.path
     if path == "/logout":
         return "viewer"
+    if (
+        request.method == "GET"
+        and path in {
+            "/api/config/fields",
+            "/api/config/fields/status",
+        }
+    ):
+        return "viewer"
     if path.startswith("/api/config/") or path == "/config/":
         return "admin"
     if path.startswith("/api/restream-urls/"):
