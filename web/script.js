@@ -452,6 +452,11 @@ async function refreshNavigationAccess() {
         const payload = await response.json();
         const role = payload.authenticated ? payload.role : null;
         const legacyMode = payload.rbac_enabled === false;
+        const signInLink = document.getElementById('signInNavLink');
+
+        if (signInLink) {
+            signInLink.hidden = legacyMode || payload.authenticated;
+        }
 
         document.querySelectorAll('[data-minimum-role]').forEach(link => {
             const minimumRole = link.dataset.minimumRole;
