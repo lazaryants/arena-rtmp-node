@@ -36,9 +36,9 @@ class AccessControlTests(unittest.TestCase):
         self.assertFalse(role_allows("unknown", "viewer"))
 
     def test_create_authenticate_and_disable_user(self):
-        self.store.set_user("andrey", "long-test-password", "admin")
+        self.store.set_user("andrey", "Long-test-password", "admin")
         self.assertEqual(
-            self.store.authenticate("andrey", "long-test-password"),
+            self.store.authenticate("andrey", "Long-test-password"),
             {"username": "andrey", "role": "admin"},
         )
         self.assertIsNone(
@@ -46,26 +46,45 @@ class AccessControlTests(unittest.TestCase):
         )
         self.store.disable_user("andrey")
         self.assertIsNone(
-            self.store.authenticate("andrey", "long-test-password"),
+            self.store.authenticate("andrey", "Long-test-password"),
         )
 
     def test_password_hash_is_not_exposed(self):
-        self.store.set_user("manager", "long-test-password", "manager")
+        self.store.set_user("manager", "Long-test-password", "manager")
         users = self.store.public_users()
         self.assertEqual(
             users,
             [{"username": "manager", "role": "manager", "enabled": True}],
         )
-        self.assertNotIn("long-test-password", self.path.read_text())
+        self.assertNotIn("Long-test-password", self.path.read_text())
 
     def test_short_password_is_rejected_without_file(self):
         with self.assertRaises(UserStoreError):
             self.store.set_user("viewer", "short", "viewer")
         self.assertFalse(self.path.exists())
 
+    def test_eight_character_mixed_case_special_password_is_accepted(self):
+        self.store.set_user("viewer", "Abcdef!?", "viewer")
+        self.assertIsNotNone(
+            self.store.authenticate("viewer", "Abcdef!?"),
+        )
+
+    def test_password_requires_lowercase_uppercase_and_special(self):
+        invalid_passwords = (
+            "Abcdef!",
+            "ABCDEFG!",
+            "abcdefg!",
+            "Abcdefgh",
+            "Abc defG",
+        )
+        for password in invalid_passwords:
+            with self.subTest(password=password):
+                with self.assertRaises(UserStoreError):
+                    self.store.set_user("viewer", password, "viewer")
+
     def test_all_supported_roles_can_be_stored(self):
         for role in ROLES:
-            self.store.set_user(role, f"password-for-{role}", role)
+            self.store.set_user(role, f"Password-for-{role}", role)
         self.assertEqual(len(self.store.public_users()), len(ROLES))
 
     def test_unauthenticated_api_is_rejected_when_enabled(self):
@@ -86,7 +105,7 @@ class AccessControlTests(unittest.TestCase):
         )
 
     def test_manager_cannot_open_admin_configuration(self):
-        self.store.set_user("manager", "long-test-password", "manager")
+        self.store.set_user("manager", "Long-test-password", "manager")
         client = restream_manager.app.test_client()
 
         with (
@@ -108,7 +127,7 @@ class AccessControlTests(unittest.TestCase):
         )
 
     def test_login_creates_session_without_exposing_role_cookie(self):
-        self.store.set_user("operator", "long-test-password", "operator")
+        self.store.set_user("operator", "Long-test-password", "operator")
         client = restream_manager.app.test_client()
 
         with (
@@ -123,7 +142,7 @@ class AccessControlTests(unittest.TestCase):
                 "/login",
                 data={
                     "username": "operator",
-                    "password": "long-test-password",
+                    "password": "Long-test-password",
                     "next": "/admin/",
                 },
             )
@@ -149,7 +168,7 @@ class AccessControlTests(unittest.TestCase):
                 "admin",
                 "--password-stdin",
             ],
-            input="long-cli-password\n",
+            input="Long-cli-password\n",
             text=True,
             capture_output=True,
             cwd="/tmp",
