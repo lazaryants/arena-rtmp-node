@@ -102,13 +102,19 @@ def read_ffmpeg_progress(progress_file):
                 if separator and key:
                     values[key] = value
 
+        def integer_value(name):
+            try:
+                return int(values.get(name, '0') or 0)
+            except (TypeError, ValueError):
+                return 0
+
         return {
             'age': max(0.0, time.time() - os.path.getmtime(path)),
-            'total_size': int(values.get('total_size', '0') or 0),
-            'out_time_us': int(values.get('out_time_us', '0') or 0),
+            'total_size': integer_value('total_size'),
+            'out_time_us': integer_value('out_time_us'),
             'speed': values.get('speed'),
         }
-    except (OSError, TypeError, ValueError):
+    except OSError:
         return None
 
 
