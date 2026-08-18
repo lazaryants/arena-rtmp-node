@@ -77,6 +77,9 @@ class RestreamSupervisor:
                     continue
 
                 log_file = self.settings.log_file(field_id, index)
+                progress_file = self.settings.progress_file(field_id, index)
+                if progress_file.exists():
+                    progress_file.unlink()
                 log_fd = os.open(
                     log_file,
                     os.O_WRONLY | os.O_CREAT | os.O_APPEND,
@@ -103,6 +106,8 @@ class RestreamSupervisor:
                             "-hide_banner",
                             "-loglevel", "warning",
                             "-nostats",
+                            "-stats_period", "1",
+                            "-progress", str(progress_file),
                             "-i", source,
                             "-c", "copy",
                             "-f", "flv",
@@ -148,6 +153,9 @@ class RestreamSupervisor:
                 pid_file = self.settings.pid_file(field_id, index)
                 if pid_file.exists():
                     pid_file.unlink()
+                progress_file = self.settings.progress_file(field_id, index)
+                if progress_file.exists():
+                    progress_file.unlink()
                 stopped.append(index)
             return {
                 "success": True,
@@ -170,11 +178,18 @@ class RestreamSupervisor:
             deleted_log = self.settings.log_file(field_id, url_index)
             if deleted_log.exists():
                 deleted_log.unlink()
+            deleted_progress = self.settings.progress_file(field_id, url_index)
+            if deleted_progress.exists():
+                deleted_progress.unlink()
             for index in range(url_index + 1, destination_count):
                 old_log = self.settings.log_file(field_id, index)
                 new_log = self.settings.log_file(field_id, index - 1)
                 if old_log.exists():
                     os.replace(old_log, new_log)
+                old_progress = self.settings.progress_file(field_id, index)
+                new_progress = self.settings.progress_file(field_id, index - 1)
+                if old_progress.exists():
+                    os.replace(old_progress, new_progress)
 
             return {
                 "success": True,
