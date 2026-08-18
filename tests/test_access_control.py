@@ -89,6 +89,39 @@ class AccessControlTests(unittest.TestCase):
             self.store.set_user(role, f"Password-for-{role}", role)
         self.assertEqual(len(self.store.public_users()), len(ROLES))
 
+    def test_safe_monitoring_reads_require_only_viewer_role(self):
+        for path in (
+            "/api/config/fields",
+            "/api/config/fields/status",
+        ):
+            with self.subTest(path=path):
+                with restream_manager.app.test_request_context(
+                    path,
+                    method="GET",
+                ):
+                    self.assertEqual(
+                        restream_manager.minimum_role_for_request(),
+                        "viewer",
+                    )
+
+    def test_configuration_writes_and_full_config_remain_admin_only(self):
+        requests = (
+            ("GET", "/api/config/fields/all"),
+            ("POST", "/api/config/fields"),
+            ("PUT", "/api/config/fields/1"),
+            ("DELETE", "/api/config/fields/1"),
+        )
+        for method, path in requests:
+            with self.subTest(method=method, path=path):
+                with restream_manager.app.test_request_context(
+                    path,
+                    method=method,
+                ):
+                    self.assertEqual(
+                        restream_manager.minimum_role_for_request(),
+                        "admin",
+                    )
+
     def test_unauthenticated_api_is_rejected_when_enabled(self):
         with (
             patch.object(
