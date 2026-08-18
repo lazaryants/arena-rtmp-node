@@ -65,9 +65,37 @@ def current_web_user():
     return account
 
 
+def csrf_token():
+    """Return the per-session token used for state-changing requests."""
+    token = session.get("csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["csrf_token"] = token
+    return token
+
+
+def template_access_context():
+    """Expose only the current account and permission flags to templates."""
+    account = current_web_user() if SETTINGS.rbac_enabled else {
+        "username": "legacy-admin",
+        "role": "admin",
+    }
+    role = account["role"] if account else "viewer"
+    return {
+        "web_user": account,
+        "rbac_enabled": SETTINGS.rbac_enabled,
+        "csrf_token": csrf_token(),
+        "can_control": role_allows(role, "operator"),
+        "can_manage_destinations": role_allows(role, "manager"),
+        "can_configure": role_allows(role, "admin"),
+    }
+
+
 def minimum_role_for_request():
     """Map manager routes to their least privileged supported role."""
     path = request.path
+    if path == "/logout":
+        return "viewer"
     if path.startswith("/api/config/") or path == "/config/":
         return "admin"
     if path.startswith("/api/restream-urls/"):
@@ -105,6 +133,19 @@ def enforce_role_access():
     minimum_role = minimum_role_for_request()
     if not role_allows(account["role"], minimum_role):
         return access_denied(403, "Insufficient permissions")
+
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        supplied_token = (
+            request.headers.get("X-CSRF-Token")
+            or request.form.get("csrf_token", "")
+        )
+        expected_token = session.get("csrf_token", "")
+        if not (
+            supplied_token
+            and expected_token
+            and secrets.compare_digest(supplied_token, expected_token)
+        ):
+            return access_denied(403, "Invalid CSRF token")
     return None
 
 
@@ -133,6 +174,7 @@ def login():
         if account is not None:
             session.clear()
             session["username"] = account["username"]
+            csrf_token()
             return redirect(next_url)
         error = "Invalid username or password"
 
@@ -162,6 +204,7 @@ def api_session():
         "rbac_enabled": SETTINGS.rbac_enabled,
         "username": account["username"],
         "role": account["role"],
+        "csrf_token": csrf_token(),
     })
 
 
@@ -432,7 +475,11 @@ def index():
             'total_count': len(url_statuses)
         }
     
-    return render_template('index.html', fields=fields_status)
+    return render_template(
+        'index.html',
+        fields=fields_status,
+        **template_access_context(),
+    )
 
 
 @app.route('/api/status')
@@ -671,7 +718,11 @@ def api_delete_restream_url(field_id, url_index):
 def config_page():
     """Страница конфигурации полей"""
     config = load_config()
-    return render_template('config.html', fields=config.get('fields', {}))
+    return render_template(
+        'config.html',
+        fields=config.get('fields', {}),
+        **template_access_context(),
+    )
 
 
 @app.route('/api/config/fields')

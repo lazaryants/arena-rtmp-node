@@ -8,6 +8,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from jinja2 import FileSystemLoader
+
 from app import restream_manager
 
 from app.access_control import (
@@ -152,6 +154,75 @@ class AccessControlTests(unittest.TestCase):
         self.assertEqual(response.headers["Location"], "/admin/")
         self.assertEqual(session_response.status_code, 200)
         self.assertEqual(session_response.get_json()["role"], "operator")
+
+    def test_mutating_request_requires_valid_csrf_token(self):
+        self.store.set_user("operator", "Long-test-password", "operator")
+        client = restream_manager.app.test_client()
+
+        with (
+            patch.object(
+                restream_manager,
+                "SETTINGS",
+                SimpleNamespace(rbac_enabled=True),
+            ),
+            patch.object(restream_manager, "USER_STORE", self.store),
+        ):
+            with client.session_transaction() as browser_session:
+                browser_session["username"] = "operator"
+                browser_session["csrf_token"] = "expected-token"
+
+            rejected = client.post("/logout")
+            accepted = client.post(
+                "/logout",
+                data={"csrf_token": "expected-token"},
+            )
+
+        self.assertEqual(rejected.status_code, 403)
+        self.assertEqual(accepted.status_code, 302)
+
+    def test_operator_page_does_not_expose_destination_url(self):
+        secret_url = "rtmp://destination.example/live/secret"
+        self.store.set_user("operator", "Long-test-password", "operator")
+        client = restream_manager.app.test_client()
+        settings = SimpleNamespace(
+            rbac_enabled=True,
+            pid_file=lambda *_args: "/tmp/missing.pid",
+            log_file=lambda *_args: "/tmp/missing.log",
+            progress_file=lambda *_args: "/tmp/missing.progress",
+        )
+
+        template_directory = Path(__file__).resolve().parents[1] / (
+            "app/templates"
+        )
+        with (
+            patch.object(restream_manager, "SETTINGS", settings),
+            patch.object(restream_manager, "USER_STORE", self.store),
+            patch.object(
+                restream_manager.app,
+                "jinja_loader",
+                FileSystemLoader(template_directory),
+            ),
+            patch.object(
+                restream_manager,
+                "get_fields",
+                return_value={
+                    1: {
+                        "name": "Field 1",
+                        "urls": [secret_url],
+                    },
+                },
+            ),
+        ):
+            with client.session_transaction() as browser_session:
+                browser_session["username"] = "operator"
+            response = client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(secret_url, response.get_data(as_text=True))
+        self.assertIn(
+            "Configured destination",
+            response.get_data(as_text=True),
+        )
 
     def test_user_cli_runs_without_project_pythonpath(self):
         project_root = Path(__file__).resolve().parents[1]

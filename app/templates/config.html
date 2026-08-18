@@ -233,6 +233,15 @@
                     <button type="button" data-columns="3">3</button>
                     <button type="button" data-columns="4">4</button>
                 </div>
+                {% if rbac_enabled and web_user %}
+                <div class="logout">
+                    <span>{{ web_user.username }} · {{ web_user.role }}</span>
+                    <form action="/admin/logout" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button class="btn" type="submit">Logout</button>
+                    </form>
+                </div>
+                {% endif %}
             </div>
         </div>
         <div id="alert" class="alert"></div>
@@ -291,6 +300,7 @@
         </div>
     </div>
     <script>
+        const CSRF_TOKEN = {{ csrf_token | tojson }};
         let fields = {};
         const CONFIG_LAYOUT_KEY = 'arena-config-columns';
         function setConfigColumns(value) {
@@ -449,13 +459,19 @@
                 if (id) {
                     response = await fetch(`/admin/api/config/fields/${id}`, {
                         method: 'PUT',
-                        headers: {'Content-Type': 'application/json'},
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': CSRF_TOKEN
+                        },
                         body: JSON.stringify(data)
                     });
                 } else {
                     response = await fetch('/admin/api/config/fields', {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': CSRF_TOKEN
+                        },
                         body: JSON.stringify(data)
                     });
                 }
@@ -476,7 +492,10 @@
             try {
                 const response = await fetch(`/admin/api/config/fields/${id}`, {
                     method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': CSRF_TOKEN
+                        },
                     body: JSON.stringify({ enabled: !field.enabled })
                 });
                 const result = await response.json();
@@ -493,7 +512,8 @@
             
             try {
                 const response = await fetch(`/admin/api/config/fields/${id}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: {'X-CSRF-Token': CSRF_TOKEN}
                 });
                 const result = await response.json();
                 if (result.success) {
@@ -510,7 +530,10 @@
             try {
                 const response = await fetch(`/admin/api/config/fields/${id}`, {
                     method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': CSRF_TOKEN
+                        },
                     body: JSON.stringify({ key: generateRandomKey() })
                 });
                 const result = await response.json();
