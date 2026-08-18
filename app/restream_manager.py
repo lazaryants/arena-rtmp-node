@@ -164,7 +164,7 @@ def get_fields():
         
         fields[int(field_id)] = {
             'name': field_data.get('name', f'Field {field_id}'),
-            'source': f'{SETTINGS.local_hls_origin}/place{field_id}/{stream_key}.m3u8',
+            'source': f'{SETTINGS.local_rtmp_origin}/place{field_id}/{stream_key}',
             'urls': urls,
             'pid_files': [str(SETTINGS.pid_file(field_id, i)) for i in range(len(urls))],
             'log_files': [str(SETTINGS.log_file(field_id, i)) for i in range(len(urls))]
