@@ -99,7 +99,10 @@
             font-weight: bold;
         }
         .url-status.running { background: rgba(76, 175, 80, 0.3); border: 2px solid #4CAF50; }
-        .url-status.stopped { background: rgba(244, 67, 54, 0.3); border: 2px solid #f44336; }
+        .url-status.stopped { background: rgba(158, 158, 158, 0.3); border: 2px solid #9e9e9e; }
+        .url-status.starting,
+        .url-status.stopping { background: rgba(255, 152, 0, 0.3); border: 2px solid #ff9800; }
+        .url-status.error { background: rgba(244, 67, 54, 0.3); border: 2px solid #f44336; }
         
         .url-input-row {
             display: flex;
@@ -217,21 +220,25 @@
             <div class="card-header">
                 <h3>🏟️ {{ field.name }}</h3>
                 {% if field.total_count == 0 %}
-                    <span class="overall-status no-urls">No URLs</span>
+                    <span id="overall-status-{{ field_id }}" class="overall-status no-urls">No URLs</span>
                 {% elif field.running_count == field.total_count %}
-                    <span class="overall-status all-running">🟢 {{ field.running_count }}/{{ field.total_count }}</span>
+                    <span id="overall-status-{{ field_id }}" class="overall-status all-running">🟢 {{ field.running_count }}/{{ field.total_count }}</span>
                 {% elif field.running_count > 0 %}
-                    <span class="overall-status partial">🟠 {{ field.running_count }}/{{ field.total_count }}</span>
+                    <span id="overall-status-{{ field_id }}" class="overall-status partial">🟠 {{ field.running_count }}/{{ field.total_count }}</span>
                 {% else %}
-                    <span class="overall-status all-stopped">⚫ 0/{{ field.total_count }}</span>
+                    <span id="overall-status-{{ field_id }}" class="overall-status all-stopped">⚫ 0/{{ field.total_count }}</span>
                 {% endif %}
             </div>
 
             {% for url_data in field.urls %}
-            <div class="url-item" id="url-{{ field_id }}-{{ url_data.index }}">
+            <div class="url-item"
+                 id="url-{{ field_id }}-{{ url_data.index }}"
+                 data-field-id="{{ field_id }}"
+                 data-url-index="{{ url_data.index }}">
                 <div class="url-header">
                     <span class="url-number">Destination #{{ url_data.index + 1 }}</span>
-                    <span class="url-status {% if url_data.status.status == 'running' %}running{% else %}stopped{% endif %}">
+                    <span id="url-status-{{ field_id }}-{{ url_data.index }}"
+                          class="url-status {% if url_data.status.status == 'running' %}running{% else %}stopped{% endif %}">
                         {% if url_data.status.status == 'running' %}
                             🟢 RUNNING
                         {% else %}
@@ -250,12 +257,14 @@
                 </div>
                 
                 <div class="url-actions">
-                    <button class="btn btn-start" 
+                    <button class="btn btn-start"
+                            id="start-{{ field_id }}-{{ url_data.index }}"
                             onclick="controlUrl({{ field_id }}, {{ url_data.index }}, 'start')"
                             {% if url_data.status.status == 'running' or not url_data.url %}disabled{% endif %}>
                         ▶ Start
                     </button>
-                    <button class="btn btn-stop" 
+                    <button class="btn btn-stop"
+                            id="stop-{{ field_id }}-{{ url_data.index }}"
                             onclick="controlUrl({{ field_id }}, {{ url_data.index }}, 'stop')"
                             {% if url_data.status.status != 'running' %}disabled{% endif %}>
                         ⏹ Stop
@@ -277,12 +286,14 @@
             
             {% if field.total_count > 0 %}
             <div class="global-actions">
-                <button class="btn btn-global" 
+                <button class="btn btn-global"
+                        id="start-all-{{ field_id }}"
                         onclick="controlAll({{ field_id }}, 'start')"
                         {% if field.running_count == field.total_count %}disabled{% endif %}>
                     ▶ Start All
                 </button>
-                <button class="btn btn-global" 
+                <button class="btn btn-global"
+                        id="stop-all-{{ field_id }}"
                         onclick="controlAll({{ field_id }}, 'stop')"
                         {% if field.running_count == 0 %}disabled{% endif %}>
                     ⏹ Stop All
@@ -295,6 +306,9 @@
 
     <script>
         const RESTREAM_LAYOUT_KEY = 'arena-restream-columns';
+        const RESTREAM_STATUS_INTERVAL_MS = 3000;
+        const RESTREAM_ACTION_TIMEOUT_MS = 20000;
+        const pendingRestreamActions = new Map();
         function setRestreamColumns(value) {
             const columns = ['2', '3', '4'].includes(String(value))
                 ? String(value)
@@ -321,7 +335,146 @@
             );
         }
 
-        async function saveUrl(fieldId, urlIndex) {
+        function destinationKey(fieldId, urlIndex) {
+            return `${fieldId}:${urlIndex}`;
+        }
+
+        function setDestinationState(fieldId, urlIndex, state) {
+            const status = document.getElementById(
+                `url-status-${fieldId}-${urlIndex}`
+            );
+            const startButton = document.getElementById(
+                `start-${fieldId}-${urlIndex}`
+            );
+            const stopButton = document.getElementById(
+                `stop-${fieldId}-${urlIndex}`
+            );
+            if (!status) return;
+
+            const labels = {
+                running: '🟢 RUNNING',
+                stopped: '⚫ STOPPED',
+                starting: '🟠 STARTING',
+                stopping: '🟠 STOPPING',
+                error: '🔴 ERROR',
+            };
+            status.className = `url-status ${state}`;
+            status.textContent = labels[state] || labels.stopped;
+
+            const busy = state === 'starting' || state === 'stopping';
+            if (startButton) {
+                startButton.disabled = busy || state === 'running';
+            }
+            if (stopButton) {
+                stopButton.disabled = busy || state !== 'running';
+            }
+        }
+
+        function updateFieldSummary(fieldId, runningCount, totalCount) {
+            const status = document.getElementById(
+                `overall-status-${fieldId}`
+            );
+            if (!status) return;
+
+            if (totalCount === 0) {
+                status.className = 'overall-status no-urls';
+                status.textContent = 'No URLs';
+            } else if (runningCount === totalCount) {
+                status.className = 'overall-status all-running';
+                status.textContent = `🟢 ${runningCount}/${totalCount}`;
+            } else if (runningCount > 0) {
+                status.className = 'overall-status partial';
+                status.textContent = `🟠 ${runningCount}/${totalCount}`;
+            } else {
+                status.className = 'overall-status all-stopped';
+                status.textContent = `⚫ 0/${totalCount}`;
+            }
+
+            const startAll = document.getElementById(
+                `start-all-${fieldId}`
+            );
+            const stopAll = document.getElementById(
+                `stop-all-${fieldId}`
+            );
+            if (startAll) startAll.disabled = runningCount === totalCount;
+            if (stopAll) stopAll.disabled = runningCount === 0;
+        }
+
+        async function refreshRestreamStatus() {
+            try {
+                const response = await fetch('/admin/api/status', {
+                    cache: 'no-store'
+                });
+                if (!response.ok) {
+                    throw new Error(`Status HTTP ${response.status}`);
+                }
+
+                const payload = await response.json();
+                Object.entries(payload.fields || {}).forEach(
+                    ([fieldId, field]) => {
+                        updateFieldSummary(
+                            fieldId,
+                            field.running_count,
+                            field.total_count
+                        );
+
+                        (field.destinations || []).forEach(destination => {
+                            const key = destinationKey(
+                                fieldId,
+                                destination.index
+                            );
+                            const pending = pendingRestreamActions.get(key);
+                            let state = destination.status;
+
+                            if (pending) {
+                                const completed = (
+                                    pending.state === 'starting'
+                                    && state === 'running'
+                                ) || (
+                                    pending.state === 'stopping'
+                                    && state === 'stopped'
+                                ) || (
+                                    pending.state === 'error'
+                                    && state === 'running'
+                                );
+
+                                if (completed) {
+                                    pendingRestreamActions.delete(key);
+                                } else if (
+                                    Date.now() - pending.startedAt
+                                    > RESTREAM_ACTION_TIMEOUT_MS
+                                ) {
+                                    pending.state = 'error';
+                                    state = 'error';
+                                } else {
+                                    state = pending.state;
+                                }
+                            }
+
+                            setDestinationState(
+                                fieldId,
+                                destination.index,
+                                state
+                            );
+                        });
+                    }
+                );
+
+                document.querySelectorAll('details[open] .logs').forEach(
+                    logs => {
+                        const parts = logs.id.replace('logs-', '').split('-');
+                        loadLogs(parts[0], parts[1]);
+                    }
+                );
+            } catch (error) {
+                console.warn(
+                    'Restream status is temporarily unavailable:',
+                    error
+                );
+            }
+        }
+
+                async function saveUrl(fieldId, urlIndex) {
             const input = document.getElementById(`input-${fieldId}-${urlIndex}`);
             const newUrl = input.value.trim();
             
@@ -391,39 +544,87 @@
         }
 
         async function controlUrl(fieldId, urlIndex, action) {
+            const key = destinationKey(fieldId, urlIndex);
+            const transitionalState = action === 'start'
+                ? 'starting'
+                : 'stopping';
+            pendingRestreamActions.set(key, {
+                state: transitionalState,
+                startedAt: Date.now()
+            });
+            setDestinationState(fieldId, urlIndex, transitionalState);
+
             try {
-                const response = await fetch(`/admin/api/${action}/${fieldId}/${urlIndex}`, {
-                    method: 'POST'
-                });
+                const response = await fetch(
+                    `/admin/api/${action}/${fieldId}/${urlIndex}`,
+                    {method: 'POST'}
+                );
                 const data = await response.json();
-                
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('Error: ' + data.message);
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || `HTTP ${response.status}`);
                 }
+                setTimeout(refreshRestreamStatus, 500);
             } catch (error) {
-                alert('Error: ' + error.message);
+                pendingRestreamActions.set(key, {
+                    state: 'error',
+                    startedAt: Date.now()
+                });
+                setDestinationState(fieldId, urlIndex, 'error');
+                console.error('Restream action failed:', error);
             }
         }
 
         async function controlAll(fieldId, action) {
             if (!confirm(`${action === 'start' ? 'Start' : 'Stop'} all destinations for this field?`)) return;
-            
+
+            const transitionalState = action === 'start'
+                ? 'starting'
+                : 'stopping';
+            document.querySelectorAll(
+                `.url-item[data-field-id="${fieldId}"]`
+            ).forEach(item => {
+                const urlIndex = item.dataset.urlIndex;
+                pendingRestreamActions.set(
+                    destinationKey(fieldId, urlIndex),
+                    {
+                        state: transitionalState,
+                        startedAt: Date.now()
+                    }
+                );
+                setDestinationState(
+                    fieldId,
+                    urlIndex,
+                    transitionalState
+                );
+            });
+
             try {
-                // Запускаем/останавливаем все URL для поля
-                const response = await fetch(`/admin/api/${action}/${fieldId}`, {
-                    method: 'POST'
-                });
+                const response = await fetch(
+                    `/admin/api/${action}/${fieldId}`,
+                    {method: 'POST'}
+                );
                 const data = await response.json();
-                
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('Error: ' + data.message);
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || `HTTP ${response.status}`);
                 }
+                setTimeout(refreshRestreamStatus, 500);
             } catch (error) {
-                alert('Error: ' + error.message);
+                document.querySelectorAll(
+                    `.url-item[data-field-id="${fieldId}"]`
+                ).forEach(item => {
+                    const urlIndex = item.dataset.urlIndex;
+                    pendingRestreamActions.set(
+                        destinationKey(fieldId, urlIndex),
+                        {
+                            state: 'error',
+                            startedAt: Date.now()
+                        }
+                    );
+                    setDestinationState(fieldId, urlIndex, 'error');
+                });
+                console.error('Restream group action failed:', error);
             }
         }
 
@@ -447,9 +648,11 @@
         }
 
         setupRestreamLayout();
-
-        // Status polling will replace full-page reloads. Reloading here
-        // aborted pending destination edits and reset open controls.
+        refreshRestreamStatus();
+        setInterval(
+            refreshRestreamStatus,
+            RESTREAM_STATUS_INTERVAL_MS
+        );
 
         // Загрузка логов при открытии details
         document.querySelectorAll('details').forEach(details => {
