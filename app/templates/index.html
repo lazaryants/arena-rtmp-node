@@ -649,15 +649,23 @@
                 const response = await fetch(`/admin/api/logs/${fieldId}/${urlIndex}`);
                 const data = await response.json();
                 
-                const logsDiv = document.getElementById(`logs-${fieldId}-${urlIndex}`);
-                if (data.logs && data.logs.length > 0) {
-                    logsDiv.innerHTML = data.logs.map(line => 
-                        `<div class="log-line ${line.toLowerCase().includes('error') ? 'log-error' : ''}">${line}</div>`
-                    ).join('');
-                    logsDiv.scrollTop = logsDiv.scrollHeight;
-                } else {
-                    logsDiv.innerHTML = '<div class="log-line">No logs available</div>';
-                }
+                const logsDiv = document.getElementById(
+                    `logs-${fieldId}-${urlIndex}`
+                );
+                logsDiv.replaceChildren();
+
+                const lines = data.logs && data.logs.length > 0
+                    ? data.logs
+                    : ['No logs available'];
+                lines.forEach(line => {
+                    const row = document.createElement('div');
+                    row.className = line.toLowerCase().includes('error')
+                        ? 'log-line log-error'
+                        : 'log-line';
+                    row.textContent = line;
+                    logsDiv.appendChild(row);
+                });
+                logsDiv.scrollTop = logsDiv.scrollHeight;
             } catch (error) {
                 console.error('Failed to load logs:', error);
             }
