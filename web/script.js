@@ -436,6 +436,38 @@ function initStream(stream) {
     if (video) updateTechInfo(stream, null, video);
 }
 
+async function refreshNavigationAccess() {
+    const roleRanks = {
+        viewer: 0,
+        operator: 1,
+        manager: 2,
+        admin: 3,
+    };
+
+    try {
+        const response = await fetch('/api/session', {
+            cache: 'no-store',
+            credentials: 'same-origin',
+        });
+        const payload = await response.json();
+        const role = payload.authenticated ? payload.role : null;
+        const legacyMode = payload.rbac_enabled === false;
+
+        document.querySelectorAll('[data-minimum-role]').forEach(link => {
+            const minimumRole = link.dataset.minimumRole;
+            link.hidden = !(
+                legacyMode
+                || (
+                    role in roleRanks
+                    && roleRanks[role] >= roleRanks[minimumRole]
+                )
+            );
+        });
+    } catch (error) {
+        console.warn('Navigation access is temporarily unavailable:', error);
+    }
+}
+
 async function refreshNodeMetrics() {
     try {
         const response = await fetch('/api/node/metrics', {cache: 'no-store'});
@@ -560,5 +592,6 @@ function renderStreams() {
 }
 
 setupMonitorLayout();
+refreshNavigationAccess();
 loadStreams();
 setInterval(refreshNodeMetrics, 5000);
