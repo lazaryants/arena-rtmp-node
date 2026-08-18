@@ -280,7 +280,7 @@
         </div>
         <nav class="nav-menu" aria-label="Main navigation">
             <a href="/">Monitoring</a>
-            <a href="/config/">Configuration</a>
+            {% if can_configure %}<a href="/config/">Configuration</a>{% endif %}
             <a href="/admin/" class="active">Restreams</a>
         </nav>
     </header>
@@ -297,7 +297,15 @@
                 <button type="button" data-columns="3">3</button>
                 <button type="button" data-columns="4">4</button>
             </div>
-            <div class="logout"><a href="?logout=1">Logout</a></div>
+            {% if rbac_enabled and web_user %}
+            <div class="logout">
+                <span>{{ web_user.username }} · {{ web_user.role }}</span>
+                <form action="/admin/logout" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button class="btn" type="submit">Logout</button>
+                </form>
+            </div>
+            {% endif %}
         </div>
     </div>
     
@@ -338,20 +346,26 @@
                     </span>
                 </div>
                 
+                {% if can_manage_destinations %}
                 <div class="url-input-row">
-                    <input type="text" 
-                           class="url-input" 
-                           id="input-{{ field_id }}-{{ url_data.index }}" 
+                    <input type="text"
+                           class="url-input"
+                           id="input-{{ field_id }}-{{ url_data.index }}"
                            value="{{ url_data.url }}"
                            placeholder="rtmp://server.com/live/key">
                     <button class="btn btn-save" onclick="saveUrl({{ field_id }}, {{ url_data.index }})">💾</button>
                 </div>
+                {% else %}
+                <div class="url-input-row">
+                    <span>Configured destination</span>
+                </div>
+                {% endif %}
                 
                 <div class="url-actions">
                     <button class="btn btn-start"
                             id="start-{{ field_id }}-{{ url_data.index }}"
                             onclick="controlUrl({{ field_id }}, {{ url_data.index }}, 'start')"
-                            {% if url_data.status.status != 'stopped' or not url_data.url %}disabled{% endif %}>
+                            {% if url_data.status.status != 'stopped' %}disabled{% endif %}>
                         ▶ Start
                     </button>
                     <button class="btn btn-stop"
@@ -360,10 +374,12 @@
                             {% if url_data.status.status == 'stopped' %}disabled{% endif %}>
                         ⏹ Stop
                     </button>
-                    <button class="btn btn-delete" 
+                    {% if can_manage_destinations %}
+                    <button class="btn btn-delete"
                             onclick="deleteUrl({{ field_id }}, {{ url_data.index }})">
                         🗑️ Delete
                     </button>
+                    {% endif %}
                 </div>
                 
                 <details>
@@ -373,7 +389,9 @@
             </div>
             {% endfor %}
             
+            {% if can_manage_destinations %}
             <button class="btn btn-add" onclick="addUrl({{ field_id }})">➕ Add Destination</button>
+            {% endif %}
             
             {% if field.total_count > 0 %}
             <div class="global-actions">
@@ -434,6 +452,7 @@
     </div>
 
     <script>
+        const CSRF_TOKEN = {{ csrf_token | tojson }};
         const RESTREAM_LAYOUT_KEY = 'arena-restream-columns';
         const RESTREAM_STATUS_INTERVAL_MS = 3000;
         const RESTREAM_ACTION_TIMEOUT_MS = 20000;
@@ -528,6 +547,13 @@
         }
 
         async function requestJson(url, options = {}) {
+            const method = (options.method || 'GET').toUpperCase();
+            if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+                options.headers = {
+                    ...(options.headers || {}),
+                    'X-CSRF-Token': CSRF_TOKEN,
+                };
+            }
             const response = await fetch(url, options);
             let payload = {};
             try {
@@ -839,7 +865,10 @@
             try {
                 const response = await fetch(
                     `/admin/api/${action}/${fieldId}/${urlIndex}`,
-                    {method: 'POST'}
+                    {
+                        method: 'POST',
+                        headers: {'X-CSRF-Token': CSRF_TOKEN}
+                    }
                 );
                 const data = await response.json();
 
@@ -897,7 +926,10 @@
             try {
                 const response = await fetch(
                     `/admin/api/${action}/${fieldId}`,
-                    {method: 'POST'}
+                    {
+                        method: 'POST',
+                        headers: {'X-CSRF-Token': CSRF_TOKEN}
+                    }
                 );
                 const data = await response.json();
 
