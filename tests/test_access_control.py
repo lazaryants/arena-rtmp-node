@@ -8,6 +8,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from jinja2 import FileSystemLoader
+
 from app import restream_manager
 
 from app.access_control import (
@@ -189,9 +191,17 @@ class AccessControlTests(unittest.TestCase):
             progress_file=lambda *_args: "/tmp/missing.progress",
         )
 
+        template_directory = Path(__file__).resolve().parents[1] / (
+            "app/templates"
+        )
         with (
             patch.object(restream_manager, "SETTINGS", settings),
             patch.object(restream_manager, "USER_STORE", self.store),
+            patch.object(
+                restream_manager.app,
+                "jinja_loader",
+                FileSystemLoader(template_directory),
+            ),
             patch.object(
                 restream_manager,
                 "get_fields",
