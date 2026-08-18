@@ -53,6 +53,48 @@ class ConfigApiTests(unittest.TestCase):
             ["rtmps://destination.example/live/token"],
         )
 
+    @patch.object(restream_manager, "get_process_status")
+    def test_status_snapshot_is_dynamic_and_does_not_expose_urls(
+        self,
+        mocked_status,
+    ):
+        self.store.save({
+            "schema_version": 1,
+            "fields": {
+                "1": {
+                    "name": "Place 1",
+                    "enabled": True,
+                    "stream_key": "stream1",
+                    "key": "publish-key",
+                    "publish_auth_enabled": True,
+                    "restream_urls": [
+                        "rtmp://destination.example/live/private-token",
+                    ],
+                },
+            },
+        })
+        mocked_status.return_value = {
+            "status": "running",
+            "pid": 123,
+            "uptime": 42,
+            "cpu": 1.5,
+            "memory": 24.0,
+        }
+
+        response = self.client.get("/api/status")
+        payload = response.get_json()
+        serialized = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["fields"]["1"]["running_count"], 1)
+        self.assertEqual(
+            payload["fields"]["1"]["destinations"][0]["status"],
+            "running",
+        )
+        self.assertNotIn("private-token", serialized)
+        self.assertNotIn("publish-key", serialized)
+
 
 if __name__ == "__main__":
     unittest.main()
