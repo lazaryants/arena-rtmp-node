@@ -409,6 +409,7 @@ function createStreamPlayer(stream) {
             );
             serverState = nextState;
             if (becameActive) {
+                clearRetry();
                 retryDelay = PLAYER_RETRY_MIN_MS;
                 scheduleRecovery('stream became active');
             }
