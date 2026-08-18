@@ -23,8 +23,7 @@ sudo -u arena-rtmp \
     set admin --role admin
 ```
 
-The password is prompted twice and never appears in shell history. Passwords
-must contain at least 12 characters. Stored credentials use Werkzeug password
+The password is prompted twice and never appears in shell history. Passwords must contain at least 8 characters, including uppercase and lowercase letters and at least one non-whitespace special character. Stored credentials use Werkzeug password
 hashes; plaintext passwords are never written.
 
 List safe account metadata:
