@@ -448,10 +448,8 @@
 
         setupRestreamLayout();
 
-        // Автообновление каждые 10 секунд
-        setInterval(() => {
-            location.reload();
-        }, 10000);
+        // Status polling will replace full-page reloads. Reloading here
+        // aborted pending destination edits and reset open controls.
 
         // Загрузка логов при открытии details
         document.querySelectorAll('details').forEach(details => {
