@@ -31,7 +31,7 @@ function setupMonitorDetails() {
 
     button.addEventListener('click', () => {
         setMonitorDetailsVisible(
-            !document.getElementById('streamsGrid')
+            document.getElementById('streamsGrid')
                 .classList.contains('details-hidden')
         );
     });
