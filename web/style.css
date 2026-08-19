@@ -16,7 +16,7 @@
     --error: #ff6b6b;
     --code-text: #cfe7ff;
     --control-background: rgba(0, 0, 0, 0.18);
-    --disabled-card-opacity: var(--disabled-card-opacity);
+    --disabled-card-opacity: 0.55;
     --radius: 10px;
 }
 
