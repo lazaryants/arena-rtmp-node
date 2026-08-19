@@ -581,3 +581,28 @@ video {
         grid-template-columns: 1fr;
     }
 }
+
+
+@media (max-width: 760px), (pointer: coarse) {
+    .video-container.mobile-preview-paused {
+        cursor: pointer;
+    }
+
+    .video-container.mobile-preview-paused::after {
+        background: rgba(2, 6, 11, 0.72);
+        border: 1px solid rgba(148, 178, 218, 0.32);
+        border-radius: 999px;
+        bottom: 9px;
+        color: #d8e9ff;
+        content: attr(data-preview-label);
+        font-size: 10px;
+        font-weight: 700;
+        left: 50%;
+        padding: 5px 9px;
+        pointer-events: none;
+        position: absolute;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        z-index: 2;
+    }
+}
