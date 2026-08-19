@@ -30,7 +30,7 @@ def legacy_config():
 
 
 class ConfigMigrationTests(unittest.TestCase):
-    def test_v0_to_v1_preserves_keys_and_destinations(self):
+    def test_v0_to_current_preserves_keys_and_destinations(self):
         original = legacy_config()
         unchanged = copy.deepcopy(original)
         migrated, original_version = migrate_config(original)
