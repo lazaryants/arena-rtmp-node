@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arena RTMP Node — Audit</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=1">
+    <style>
+        {% include 'theme.css' %}
+        .audit-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            margin: 0 auto;
+            max-width: 1840px;
+            overflow: hidden;
+        }
+        .audit-filters {
+            align-items: end;
+            border-bottom: 1px solid var(--border);
+            display: grid;
+            gap: 12px;
+            grid-template-columns: 1fr 1fr 150px 190px 190px 110px;
+            padding: 16px;
+        }
+        .filter-group label {
+            color: var(--text-muted);
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .filter-control {
+            background: var(--surface-soft);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            padding: 9px 10px;
+            width: 100%;
+        }
+        .audit-table-wrap { overflow-x: auto; }
+        .audit-table {
+            border-collapse: collapse;
+            min-width: 880px;
+            width: 100%;
+        }
+        .audit-table th,
+        .audit-table td {
+            border-bottom: 1px solid var(--border);
+            padding: 11px 13px;
+            text-align: left;
+            vertical-align: top;
+        }
+        .audit-table th {
+            color: var(--text-muted);
+            font-size: 11px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .audit-table td { font-size: 12px; }
+        .audit-time {
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+        .audit-action {
+            color: var(--primary);
+            font-family: "SFMono-Regular", Consolas, monospace;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .audit-target {
+            color: var(--text-muted);
+            font-family: "SFMono-Regular", Consolas, monospace;
+        }
+        .outcome {
+            border-radius: 999px;
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 4px 7px;
+            text-transform: uppercase;
+        }
+        .outcome.success {
+            background: rgba(67, 209, 122, 0.12);
+            color: var(--success);
+        }
+        .outcome.failure {
+            background: rgba(255, 107, 107, 0.12);
+            color: var(--error);
+        }
+        .audit-empty {
+            color: var(--text-muted);
+            padding: 30px;
+            text-align: center;
+        }
+        .btn {
+            background: var(--primary);
+            border: 0;
+            border-radius: 8px;
+            color: #071526;
+            cursor: pointer;
+            font-weight: 700;
+            padding: 10px 12px;
+        }
+        @media (max-width: 760px) {
+            .audit-filters { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 480px) {
+            .audit-filters { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <span class="brand-mark" aria-hidden="true">🏐</span>
+            <div>
+                <div class="brand-title">Arena RTMP Node</div>
+                <div class="brand-subtitle">Receiving and distribution server</div>
+            </div>
+        </div>
+        <div class="topbar-actions">
+            <nav class="nav-menu" aria-label="Main navigation">
+                <a href="/">Monitoring</a>
+                <a href="/config/">Configuration</a>
+                <a href="/admin/">Restreams</a>
+                <a href="/admin/users/">Users</a>
+                <a href="/admin/audit/" class="active">Audit</a>
+            </nav>
+            <div class="account-slot">
+                <span class="account-identity">
+                    {{ web_user.username }} · {{ web_user.role }}
+                </span>
+                <form action="/admin/logout" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button class="account-action" type="submit">Logout</button>
+                </form>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="page-heading container">
+            <div>
+                <h1>Audit log</h1>
+                <p>Authentication and administrative actions</p>
+            </div>
+            <span class="page-badge">Admin only · latest 500 records</span>
+        </div>
+
+        <section class="audit-panel">
+            <div class="audit-filters">
+                <div class="filter-group">
+                    <label for="actorFilter">User</label>
+                    <input class="filter-control"
+                           id="actorFilter"
+                           placeholder="All users">
+                </div>
+                <div class="filter-group">
+                    <label for="actionFilter">Action</label>
+                    <input class="filter-control"
+                           id="actionFilter"
+                           placeholder="All actions">
+                </div>
+                <div class="filter-group">
+                    <label for="outcomeFilter">Result</label>
+                    <select class="filter-control" id="outcomeFilter">
+                        <option value="">All results</option>
+                        <option value="success">Success</option>
+                        <option value="failure">Failure</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="sinceFilter">From</label>
+                    <input class="filter-control"
+                           id="sinceFilter"
+                           type="datetime-local">
+                </div>
+                <div class="filter-group">
+                    <label for="untilFilter">To</label>
+                    <input class="filter-control"
+                           id="untilFilter"
+                           type="datetime-local">
+                </div>
+                <button class="btn" type="button" onclick="loadAudit()">
+                    Apply
+                </button>
+            </div>
+            <div class="audit-table-wrap">
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Action</th>
+                            <th>Target</th>
+                            <th>Details</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditRows"></tbody>
+                </table>
+                <div class="audit-empty" id="auditEmpty" hidden>
+                    No matching audit records.
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        function formatTime(value) {
+            const date = new Date(value);
+            return Number.isNaN(date.getTime())
+                ? String(value || '')
+                : date.toLocaleString();
+        }
+
+        function formatTarget(target) {
+            return Object.entries(target || {})
+                .map(([name, value]) => `${name}=${value}`)
+                .join(', ');
+        }
+
+        function cell(row, text, className = '') {
+            const element = document.createElement('td');
+            element.textContent = text;
+            if (className) element.className = className;
+            row.appendChild(element);
+            return element;
+        }
+
+        function renderAudit(records) {
+            const body = document.getElementById('auditRows');
+            const empty = document.getElementById('auditEmpty');
+            body.replaceChildren();
+            empty.hidden = records.length > 0;
+
+            records.forEach(record => {
+                const row = document.createElement('tr');
+                cell(row, formatTime(record.timestamp), 'audit-time');
+                cell(row, record.actor || 'anonymous');
+                cell(row, record.role || 'anonymous');
+                cell(row, record.action || '', 'audit-action');
+                cell(row, formatTarget(record.target), 'audit-target');
+                cell(row, formatTarget(record.details), 'audit-target');
+                const resultCell = cell(row, '');
+                const badge = document.createElement('span');
+                badge.className = `outcome ${record.outcome}`;
+                badge.textContent = record.outcome;
+                resultCell.appendChild(badge);
+                body.appendChild(row);
+            });
+        }
+
+        async function loadAudit() {
+            const parameters = new URLSearchParams({limit: '500'});
+            const actor = document.getElementById('actorFilter').value.trim();
+            const action = document.getElementById('actionFilter').value.trim();
+            const outcome = document.getElementById('outcomeFilter').value;
+            const since = document.getElementById('sinceFilter').value;
+            const until = document.getElementById('untilFilter').value;
+            if (actor) parameters.set('actor', actor);
+            if (action) parameters.set('action', action);
+            if (outcome) parameters.set('outcome', outcome);
+            if (since) {
+                parameters.set('since', new Date(since).toISOString());
+            }
+            if (until) {
+                parameters.set('until', new Date(until).toISOString());
+            }
+
+            try {
+                const response = await fetch(
+                    `/admin/api/audit?${parameters}`,
+                    {cache: 'no-store'}
+                );
+                const payload = await response.json();
+                if (!response.ok || !payload.success) {
+                    throw new Error(
+                        payload.message || `HTTP ${response.status}`
+                    );
+                }
+                renderAudit(payload.records || []);
+            } catch (error) {
+                const empty = document.getElementById('auditEmpty');
+                empty.hidden = false;
+                empty.textContent = `Audit unavailable: ${error.message}`;
+            }
+        }
+
+        document.querySelectorAll('.filter-control').forEach(control => {
+            control.addEventListener('keydown', event => {
+                if (event.key === 'Enter') loadAudit();
+            });
+        });
+        loadAudit();
+        window.setInterval(loadAudit, 15000);
+    </script>
+</body>
+</html>

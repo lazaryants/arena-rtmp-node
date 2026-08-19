@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from flask import Flask, render_template, request, jsonify, redirect, session
+from flask import Flask, g, render_template, request, jsonify, redirect, session
 import os
 import json
 import re
@@ -15,12 +15,14 @@ try:
     from .config_store import AUDIO_MODES, ConfigStore, ConfigValidationError
     from .supervisor_client import SupervisorClient, SupervisorUnavailable
     from .access_control import ROLES, UserStore, UserStoreError, role_allows
+    from .audit_log import AuditLog
 except ImportError:
     from settings import SETTINGS
     from monitoring import health_snapshot, metrics_snapshot
     from config_store import AUDIO_MODES, ConfigStore, ConfigValidationError
     from supervisor_client import SupervisorClient, SupervisorUnavailable
     from access_control import ROLES, UserStore, UserStoreError, role_allows
+    from audit_log import AuditLog
 
 app = Flask(
     __name__,
@@ -42,6 +44,7 @@ CONFIG_FILE = SETTINGS.config_file
 CONFIG_STORE = ConfigStore(CONFIG_FILE)
 SUPERVISOR_CLIENT = SupervisorClient(SETTINGS.supervisor_socket)
 USER_STORE = UserStore(SETTINGS.users_file)
+AUDIT_LOG = AuditLog(SETTINGS.audit_file)
 
 RTMP_URL_PATTERN = re.compile(
     r"rtmps?://\S+",
@@ -136,7 +139,15 @@ def access_denied(status_code, message):
 @app.before_request
 def enforce_role_access():
     """Apply RBAC only after the node administrator explicitly enables it."""
+    g.audit_actor = {
+        "username": "anonymous",
+        "role": "anonymous",
+    }
     if not SETTINGS.rbac_enabled:
+        g.audit_actor = {
+            "username": "legacy-admin",
+            "role": "admin",
+        }
         return None
     public_endpoints = {
         "login",
@@ -152,6 +163,7 @@ def enforce_role_access():
     account = current_web_user()
     if account is None:
         return access_denied(401, "Authentication required")
+    g.audit_actor = account
 
     minimum_role = minimum_role_for_request()
     if not role_allows(account["role"], minimum_role):
@@ -170,6 +182,114 @@ def enforce_role_access():
         ):
             return access_denied(403, "Invalid CSRF token")
     return None
+
+
+AUDIT_ACTIONS = {
+    "logout": "session.logout",
+    "api_create_user": "user.create",
+    "api_update_user_role": "user.role.update",
+    "api_update_user_enabled": "user.access.update",
+    "api_reset_user_password": "user.password.reset",
+    "api_start_all": "restream.start.all",
+    "api_start_specific": "restream.start",
+    "api_stop_all": "restream.stop.all",
+    "api_stop_specific": "restream.stop",
+    "api_restart_all": "restream.restart.all",
+    "api_restart_specific": "restream.restart",
+    "api_add_restream_url": "destination.create",
+    "api_update_restream_url": "destination.update",
+    "api_delete_restream_url": "destination.delete",
+    "api_config_create_field": "field.create",
+    "api_config_update_field": "field.update",
+    "api_config_rotate_key": "field.publish_key.rotate",
+    "api_config_delete_field": "field.delete",
+}
+
+
+def record_audit(
+    *,
+    actor,
+    role,
+    action,
+    outcome,
+    target=None,
+    details=None,
+):
+    """Audit failures must never interrupt stream control."""
+    try:
+        AUDIT_LOG.append(
+            actor=actor,
+            role=role,
+            action=action,
+            outcome=outcome,
+            target=target,
+            details=details,
+        )
+    except (OSError, ValueError, TypeError):
+        app.logger.exception("Audit log write failed")
+
+
+@app.after_request
+def audit_mutating_request(response):
+    """Record safe metadata for every supported state-changing request."""
+    if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return response
+    if request.endpoint == "login":
+        return response
+
+    action = AUDIT_ACTIONS.get(request.endpoint)
+    if not action:
+        return response
+
+    actor = getattr(g, "audit_actor", None) or {
+        "username": "anonymous",
+        "role": "anonymous",
+    }
+    target = {
+        name: value
+        for name, value in (request.view_args or {}).items()
+        if name in {"field_id", "url_index", "username"}
+    }
+    details = {
+        "method": request.method,
+        "status": response.status_code,
+    }
+
+    payload = request.get_json(silent=True)
+    if isinstance(payload, dict):
+        safe_changes = sorted(
+            name
+            for name in payload
+            if name in {"audio_mode", "enabled", "emoji", "name", "role"}
+        )
+        if "url" in payload:
+            safe_changes.append("destination")
+        if "password" in payload:
+            safe_changes.append("password")
+        if safe_changes:
+            details["changes"] = ",".join(safe_changes)
+        for name in ("audio_mode", "enabled", "role"):
+            if name in payload:
+                details[name] = payload[name]
+        if request.endpoint == "api_create_user":
+            target["username"] = str(payload.get("username", ""))
+
+    if response.status_code >= 400 and response.is_json:
+        response_payload = response.get_json(silent=True)
+        if isinstance(response_payload, dict):
+            reason = response_payload.get("message")
+            if reason:
+                details["reason"] = reason
+
+    record_audit(
+        actor=actor.get("username"),
+        role=actor.get("role"),
+        action=action,
+        outcome="success" if response.status_code < 400 else "failure",
+        target=target,
+        details=details,
+    )
+    return response
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -195,10 +315,26 @@ def login():
         except UserStoreError:
             account = None
         if account is not None:
+            record_audit(
+                actor=account["username"],
+                role=account["role"],
+                action="session.login",
+                outcome="success",
+                target={"username": account["username"]},
+            )
             session.clear()
             session["username"] = account["username"]
             csrf_token()
             return redirect(next_url)
+        record_audit(
+            actor=request.form.get("username", "").strip() or "anonymous",
+            role="anonymous",
+            action="session.login",
+            outcome="failure",
+            target={
+                "username": request.form.get("username", "").strip(),
+            },
+        )
         error = "Invalid username or password"
 
     return render_template(
@@ -245,6 +381,36 @@ def user_api_error(error, status_code=400):
         "success": False,
         "message": str(error),
     }), status_code
+
+
+@app.route("/audit/")
+def audit_page():
+    return render_template(
+        "audit.html",
+        **template_access_context(),
+    )
+
+
+@app.route("/api/audit")
+def api_audit():
+    try:
+        records = AUDIT_LOG.recent(
+            limit=request.args.get("limit", 200),
+            actor=request.args.get("actor"),
+            action=request.args.get("action"),
+            outcome=request.args.get("outcome"),
+            since=request.args.get("since"),
+            until=request.args.get("until"),
+        )
+    except (OSError, ValueError, TypeError):
+        return jsonify({
+            "success": False,
+            "message": "Audit log is temporarily unavailable",
+        }), 503
+    return jsonify({
+        "success": True,
+        "records": records,
+    })
 
 
 @app.route("/users/")
