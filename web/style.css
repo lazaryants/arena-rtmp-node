@@ -130,6 +130,146 @@
     }
 }
 
+
+:root[data-theme="padel"] {
+    color-scheme: light;
+    --background: #174f2c;
+    --background-accent: #0d3824;
+    --surface: rgba(251, 254, 252, 0.90);
+    --surface-raised: rgba(246, 252, 248, 0.97);
+    --surface-soft: rgba(24, 94, 50, 0.08);
+    --border: rgba(32, 81, 51, 0.22);
+    --border-strong: rgba(37, 132, 75, 0.58);
+    --primary: #257d4b;
+    --primary-strong: #185f37;
+    --text: #173127;
+    --text-muted: #526b5d;
+    --code-text: #175f38;
+    --control-background: rgba(24, 94, 50, 0.10);
+    --disabled-card-opacity: 0.76;
+    --success: #18864a;
+    --warning: #8a5700;
+    --error: #bd3f46;
+}
+
+:root[data-theme="padel"] body {
+    background-color: #14562b;
+    background-image:
+        linear-gradient(
+            180deg,
+            rgba(231, 244, 235, 0.70) 0,
+            rgba(231, 244, 235, 0.34) 140px,
+            rgba(231, 244, 235, 0.14) 55%,
+            rgba(231, 244, 235, 0.07) 100%
+        ),
+        url("/padel-green-court.webp?v=1");
+    background-attachment: fixed;
+    background-position: center top;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+:root[data-theme="padel"] .topbar {
+    background: transparent;
+    border-bottom-color: transparent;
+    box-shadow: none;
+    isolation: isolate;
+    position: relative;
+}
+
+:root[data-theme="padel"] .topbar::before {
+    background: linear-gradient(180deg, #174b31 0%, #0d3824 68%, #1c5e3a 100%);
+    border-bottom: 1px solid rgba(221, 255, 234, 0.54);
+    box-shadow: 0 4px 18px rgba(4, 36, 20, 0.32);
+    content: "";
+    inset: 0 auto 0 50%;
+    position: absolute;
+    transform: translateX(-50%);
+    width: 100vw;
+    z-index: -1;
+}
+
+:root[data-theme="padel"] .brand-title,
+:root[data-theme="padel"] .brand-subtitle,
+:root[data-theme="padel"] .account-identity,
+:root[data-theme="padel"] .nav-menu a,
+:root[data-theme="padel"] .account-action,
+:root[data-theme="padel"] .theme-toggle {
+    color: rgba(255, 255, 255, 0.91);
+}
+
+:root[data-theme="padel"] .brand-mark,
+:root[data-theme="padel"] .nav-menu a.active,
+:root[data-theme="padel"] .account-action,
+:root[data-theme="padel"] .theme-toggle {
+    background: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.42);
+}
+
+:root[data-theme="padel"] .nav-menu a:hover,
+:root[data-theme="padel"] .nav-menu a.active,
+:root[data-theme="padel"] .account-action:hover,
+:root[data-theme="padel"] .theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.50);
+    color: #ffffff;
+}
+
+:root[data-theme="padel"] .account-slot {
+    border-left-color: rgba(255, 255, 255, 0.28);
+}
+
+
+:root[data-theme="padel"] .page-heading h1 {
+    color: #f7fff9;
+    text-shadow:
+        0 1px 2px rgba(3, 31, 16, 0.95),
+        0 3px 10px rgba(3, 31, 16, 0.72);
+}
+
+:root[data-theme="padel"] .page-heading p {
+    color: #edf9f1;
+    font-weight: 600;
+    text-shadow:
+        0 1px 2px rgba(3, 31, 16, 0.98),
+        0 2px 8px rgba(3, 31, 16, 0.78);
+}
+
+:root[data-theme="padel"] .page-badge {
+    background: rgba(251, 254, 252, 0.93);
+    border-color: rgba(24, 95, 55, 0.45);
+    box-shadow: 0 4px 14px rgba(5, 46, 22, 0.18);
+    color: #145d36;
+}
+
+:root[data-theme="padel"] .stream-card,
+:root[data-theme="padel"] .field-card,
+:root[data-theme="padel"] .card,
+:root[data-theme="padel"] .toolbar,
+:root[data-theme="padel"] .layout-switcher,
+:root[data-theme="padel"] .panel,
+:root[data-theme="padel"] .user-panel,
+:root[data-theme="padel"] .audit-panel {
+    background: rgba(251, 254, 252, 0.90);
+    border-color: rgba(32, 81, 51, 0.22);
+    box-shadow: 0 12px 36px rgba(5, 46, 22, 0.17);
+}
+
+:root[data-theme="padel"] .stream-card:hover,
+:root[data-theme="padel"] .field-card:hover,
+:root[data-theme="padel"] .card:hover {
+    border-color: rgba(37, 132, 75, 0.65);
+    box-shadow: 0 16px 42px rgba(5, 49, 24, 0.22);
+}
+
+@media (max-width: 768px) {
+    :root[data-theme="padel"] body {
+        background-attachment: scroll;
+        background-position: center top;
+        background-size: auto 920px;
+    }
+}
+
 :root[data-theme="sand"] {
     color-scheme: light;
     --background: #dfd9ca;

@@ -4,6 +4,7 @@
         dark: { icon: '☾', label: 'Dark' },
         ice: { icon: '❄', label: 'Ice' },
         sand: { icon: '◉', label: 'Sand' },
+        padel: { icon: '▦', label: 'Padel' },
     };
 
     function normalizeTheme(value) {

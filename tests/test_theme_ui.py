@@ -7,6 +7,7 @@ THEME_SCRIPT = PROJECT_ROOT / "web/theme.js"
 SAND_TEXTURE = PROJECT_ROOT / "web/sand-texture.svg"
 SAND_BACKGROUND = PROJECT_ROOT / "web/sand-waves-v2.webp"
 ICE_BACKGROUND = PROJECT_ROOT / "web/curling-two-sheets.webp"
+PADEL_BACKGROUND = PROJECT_ROOT / "web/padel-green-court.webp"
 THEME_STYLES = (
     PROJECT_ROOT / "web/style.css",
     PROJECT_ROOT / "app/templates/theme.css",
@@ -27,9 +28,9 @@ class ThemeUiTests(unittest.TestCase):
         for path in THEMED_PAGES:
             with self.subTest(path=path):
                 source = path.read_text(encoding="utf-8")
-                self.assertIn("theme.js?v=2", source)
+                self.assertIn("theme.js?v=3", source)
                 self.assertLess(
-                    source.index("theme.js?v=2"),
+                    source.index("theme.js?v=3"),
                     source.index("<style") if "<style" in source else source.index("style.css"),
                 )
 
@@ -59,6 +60,7 @@ class ThemeUiTests(unittest.TestCase):
         self.assertIn("Dark", source)
         self.assertIn("Ice", source)
         self.assertIn("Sand", source)
+        self.assertIn("Padel", source)
 
     def test_stylesheets_define_ice_sand_and_fixed_picker(self):
         for path in THEME_STYLES:
@@ -66,6 +68,7 @@ class ThemeUiTests(unittest.TestCase):
                 source = path.read_text(encoding="utf-8")
                 self.assertIn(':root[data-theme="ice"]', source)
                 self.assertIn(':root[data-theme="sand"]', source)
+                self.assertIn(':root[data-theme="padel"]', source)
                 self.assertIn(".theme-picker", source)
                 self.assertIn(".theme-menu", source)
                 self.assertIn("flex: 0 0 34px", source)
@@ -81,6 +84,15 @@ class ThemeUiTests(unittest.TestCase):
                 self.assertIn(':root[data-theme="ice"] .stream-card', source)
                 self.assertIn(':root[data-theme="ice"] .user-panel', source)
                 self.assertIn("background-size: auto 920px", source)
+                self.assertIn('url("/padel-green-court.webp?v=1")', source)
+                self.assertIn(':root[data-theme="padel"] .topbar::before', source)
+                self.assertIn(':root[data-theme="padel"] .stream-card', source)
+                self.assertIn(':root[data-theme="padel"] .user-panel', source)
+                self.assertIn(':root[data-theme="padel"] .page-heading h1', source)
+                self.assertIn('color: #f7fff9;', source)
+                self.assertIn(':root[data-theme="padel"] .page-heading p', source)
+                self.assertIn('color: #edf9f1;', source)
+                self.assertIn(':root[data-theme="padel"] .page-badge', source)
 
     def test_light_themes_define_readable_code_and_disabled_text(self):
         expected = (
@@ -123,6 +135,14 @@ class ThemeUiTests(unittest.TestCase):
         self.assertGreater(len(source), 50_000)
         self.assertLess(len(source), 200_000)
 
+
+    def test_padel_background_is_local_optimized_webp(self):
+        source = PADEL_BACKGROUND.read_bytes()
+
+        self.assertEqual(source[:4], b"RIFF")
+        self.assertEqual(source[8:12], b"WEBP")
+        self.assertGreater(len(source), 200_000)
+        self.assertLess(len(source), 400_000)
 
 
 if __name__ == "__main__":
