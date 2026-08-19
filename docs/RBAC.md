@@ -50,3 +50,14 @@ checking it into Git. Store it in the protected `config/node.env` file, set
 removing the outer Nginx Basic Auth layer.
 
 Do not enable RBAC before at least one enabled administrator exists.
+
+## Browser user management
+
+After RBAC is enabled, an administrator can open `/admin/users/` from the
+top navigation. The page can create accounts, change roles, reset passwords,
+and enable or disable access. Password hashes and plaintext passwords are
+never returned by the API.
+
+Safety rules prevent an administrator from disabling the account currently in
+use or disabling or demoting the last enabled administrator. Disabled accounts
+lose access when their next request revalidates the signed session.
