@@ -17,6 +17,31 @@
     --radius: 10px;
 }
 
+
+:root[data-theme="light"] {
+    color-scheme: light;
+    --background: #eef3f6;
+    --background-accent: #dbe8ee;
+    --surface: rgba(255, 255, 255, 0.96);
+    --surface-raised: #e8f0f4;
+    --surface-soft: rgba(20, 55, 82, 0.06);
+    --border: rgba(42, 72, 96, 0.18);
+    --border-strong: rgba(31, 126, 184, 0.42);
+    --primary: #2588c9;
+    --primary-strong: #126ca7;
+    --text: #172838;
+    --text-muted: #5d7182;
+    --success: #18864a;
+    --warning: #a76000;
+    --error: #c83e45;
+}
+
+:root[data-theme="light"] body {
+    background:
+        radial-gradient(circle at 10% 0%, rgba(37, 136, 201, 0.13), transparent 32rem),
+        linear-gradient(145deg, #f8fafb 0%, var(--background) 55%, var(--background-accent) 145%);
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -154,6 +179,29 @@ body {
 }
 
 .account-action:hover {
+    background: var(--surface-raised);
+    border-color: var(--border-strong);
+}
+
+
+.theme-toggle {
+    align-items: center;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text);
+    cursor: pointer;
+    display: inline-flex;
+    flex: 0 0 34px;
+    font-size: 16px;
+    height: 32px;
+    justify-content: center;
+    line-height: 1;
+    padding: 0;
+    width: 34px;
+}
+
+.theme-toggle:hover {
     background: var(--surface-raised);
     border-color: var(--border-strong);
 }
