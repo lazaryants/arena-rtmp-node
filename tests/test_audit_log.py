@@ -205,6 +205,10 @@ class AuditApiTests(unittest.TestCase):
         record = self.audit.recent(action="user.create")[0]
         self.assertEqual(record["outcome"], "failure")
         self.assertEqual(record["details"]["status"], 403)
+        self.assertEqual(
+            record["details"]["reason"],
+            "Invalid CSRF token",
+        )
 
     def test_manager_cannot_read_audit_page_or_api(self):
         self.store.set_user(
