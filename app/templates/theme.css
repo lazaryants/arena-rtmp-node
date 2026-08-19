@@ -14,6 +14,9 @@
     --success: #43d17a;
     --warning: #ffb74d;
     --error: #ff6b6b;
+    --code-text: #cfe7ff;
+    --control-background: var(--control-background);
+    --disabled-card-opacity: var(--disabled-card-opacity);
     --radius: 10px;
 }
 
@@ -30,7 +33,10 @@
     --primary: #1671b1;
     --primary-strong: #0a568d;
     --text: #173246;
-    --text-muted: #587386;
+    --text-muted: #405f73;
+    --code-text: #0a568d;
+    --control-background: rgba(20, 94, 145, 0.10);
+    --disabled-card-opacity: 0.76;
     --success: #18864a;
     --warning: #9a5b00;
     --error: #c83e45;
@@ -83,7 +89,10 @@
     --primary: #95651f;
     --primary-strong: #70480f;
     --text: #342b21;
-    --text-muted: #6c604f;
+    --text-muted: #5e503f;
+    --code-text: #70480f;
+    --control-background: rgba(91, 73, 48, 0.10);
+    --disabled-card-opacity: 0.76;
     --success: #397846;
     --warning: #8d590c;
     --error: #ac4139;
@@ -461,7 +470,7 @@ body {
 }
 
 .field-card.disabled {
-    opacity: 0.55;
+    opacity: var(--disabled-card-opacity);
 }
 
 .field-header,
@@ -498,7 +507,7 @@ body {
 }
 
 .field-value {
-    color: #cfe7ff;
+    color: var(--code-text);
     font: 11px/1.4 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
     max-width: none;
     overflow-wrap: anywhere;
@@ -646,7 +655,7 @@ body {
 .url-input,
 .form-group input,
 .form-group select {
-    background: rgba(0, 0, 0, 0.18);
+    background: var(--control-background);
     border: 1px solid var(--border);
     border-radius: 7px;
     color: var(--text);
@@ -691,7 +700,7 @@ summary {
     background: rgba(0, 0, 0, 0.25);
     border: 1px solid var(--border);
     border-radius: 7px;
-    color: #cfe7ff;
+    color: var(--code-text);
     font: 10px/1.45 "SFMono-Regular", Consolas, monospace;
     margin-top: 7px;
     max-height: 180px;
