@@ -108,7 +108,7 @@ class UpdateScriptTests(unittest.TestCase):
         self.assertEqual(
             migrated["fields"]["3"]["restream_urls"],
             [{
-                "url": "rtmp://destination.example/live/private",
+                "url": "rtmps://destination.example/live/private",
                 "audio_mode": "source",
             }],
         )
