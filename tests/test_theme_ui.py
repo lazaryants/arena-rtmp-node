@@ -69,6 +69,10 @@ class ThemeUiTests(unittest.TestCase):
                 self.assertIn("flex: 0 0 34px", source)
                 self.assertIn('url("/sand-texture.svg?v=3")', source)
                 self.assertIn("320px 240px", source)
+                self.assertIn('calc(32% - 1px)', source)
+                self.assertIn('calc(50% - 1px)', source)
+                self.assertIn('calc(68% - 1px)', source)
+                self.assertIn(':root[data-theme="ice"] .topbar', source)
 
     def test_sand_texture_has_visible_irregular_grains(self):
         source = SAND_TEXTURE.read_text(encoding="utf-8")
