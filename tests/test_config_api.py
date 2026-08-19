@@ -101,6 +101,21 @@ class ConfigApiTests(unittest.TestCase):
             }],
         )
 
+    def test_destination_read_keeps_legacy_url_list(self):
+        self.client.post(
+            "/api/restream-urls/1",
+            json={"url": "rtmp://destination.example/live/token"},
+        )
+        payload = self.client.get("/api/restream-urls/1").get_json()
+        self.assertEqual(
+            payload["urls"],
+            ["rtmp://destination.example/live/token"],
+        )
+        self.assertEqual(
+            payload["destinations"][0]["audio_mode"],
+            "source",
+        )
+
     def test_destination_audio_mode_is_persisted(self):
         response = self.client.post(
             "/api/restream-urls/1",
