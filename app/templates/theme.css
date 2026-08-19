@@ -23,19 +23,19 @@
 
 :root[data-theme="ice"] {
     color-scheme: light;
-    --background: #dceff7;
-    --background-accent: #b9dce9;
-    --surface: rgba(247, 252, 255, 0.96);
-    --surface-raised: #dceff7;
-    --surface-soft: rgba(20, 94, 145, 0.07);
-    --border: rgba(36, 91, 126, 0.20);
-    --border-strong: rgba(22, 113, 177, 0.48);
-    --primary: #1671b1;
-    --primary-strong: #0a568d;
-    --text: #173246;
-    --text-muted: #405f73;
+    --background: #e7f1f6;
+    --background-accent: #c8dce8;
+    --surface: rgba(250, 253, 255, 0.88);
+    --surface-raised: rgba(244, 250, 253, 0.96);
+    --surface-soft: rgba(29, 83, 125, 0.07);
+    --border: rgba(40, 84, 122, 0.20);
+    --border-strong: rgba(32, 119, 170, 0.52);
+    --primary: #2077aa;
+    --primary-strong: #145d89;
+    --text: #132b45;
+    --text-muted: #4c657c;
     --code-text: #0a568d;
-    --control-background: rgba(20, 94, 145, 0.10);
+    --control-background: rgba(29, 83, 125, 0.10);
     --disabled-card-opacity: 0.76;
     --success: #18864a;
     --warning: #9a5b00;
@@ -43,38 +43,91 @@
 }
 
 :root[data-theme="ice"] body {
+    background-color: #e7f1f6;
     background-image:
         linear-gradient(
-            90deg,
-            transparent 0,
-            transparent calc(32% - 1px),
-            rgba(27, 111, 183, 0.22) calc(32% - 1px),
-            rgba(27, 111, 183, 0.22) calc(32% + 1px),
-            transparent calc(32% + 1px),
-            transparent calc(50% - 1px),
-            rgba(204, 48, 61, 0.20) calc(50% - 1px),
-            rgba(204, 48, 61, 0.20) calc(50% + 1px),
-            transparent calc(50% + 1px),
-            transparent calc(68% - 1px),
-            rgba(27, 111, 183, 0.22) calc(68% - 1px),
-            rgba(27, 111, 183, 0.22) calc(68% + 1px),
-            transparent calc(68% + 1px)
+            180deg,
+            rgba(239, 248, 252, 0.72) 0,
+            rgba(239, 248, 252, 0.34) 150px,
+            rgba(239, 248, 252, 0.15) 55%,
+            rgba(239, 248, 252, 0.08) 100%
         ),
-        radial-gradient(
-            circle at 50% 82%,
-            transparent 0 72px,
-            rgba(204, 48, 61, 0.13) 73px 75px,
-            transparent 76px
-        ),
-        radial-gradient(circle at 12% 4%, rgba(255, 255, 255, 0.72), transparent 29rem),
-        radial-gradient(circle at 86% 68%, rgba(112, 190, 219, 0.20), transparent 34rem),
-        linear-gradient(145deg, #edf9fd 0%, var(--background) 58%, var(--background-accent) 145%);
+        url("/curling-two-sheets.webp?v=1");
+    background-attachment: fixed;
+    background-position: center top;
+    background-repeat: no-repeat;
+    background-size: cover;
 }
 
 :root[data-theme="ice"] .topbar {
-    background: rgba(247, 252, 255, 0.93);
-    border-bottom-color: rgba(22, 113, 177, 0.36);
-    box-shadow: 0 7px 20px rgba(25, 92, 128, 0.08);
+    background: transparent;
+    border-bottom-color: transparent;
+    box-shadow: none;
+    isolation: isolate;
+    position: relative;
+}
+
+:root[data-theme="ice"] .topbar::before {
+    background: linear-gradient(180deg, #123a62 0%, #0c2f52 68%, #164a76 100%);
+    border-bottom: 1px solid rgba(215, 247, 255, 0.58);
+    box-shadow: 0 4px 18px rgba(5, 28, 51, 0.28);
+    content: "";
+    inset: 0 auto 0 50%;
+    position: absolute;
+    transform: translateX(-50%);
+    width: 100vw;
+    z-index: -1;
+}
+
+:root[data-theme="ice"] .brand-title,
+:root[data-theme="ice"] .brand-subtitle,
+:root[data-theme="ice"] .account-identity,
+:root[data-theme="ice"] .nav-menu a,
+:root[data-theme="ice"] .account-action,
+:root[data-theme="ice"] .theme-toggle {
+    color: rgba(255, 255, 255, 0.90);
+}
+
+:root[data-theme="ice"] .brand-mark,
+:root[data-theme="ice"] .nav-menu a.active,
+:root[data-theme="ice"] .account-action,
+:root[data-theme="ice"] .theme-toggle {
+    background: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.42);
+}
+
+:root[data-theme="ice"] .nav-menu a:hover,
+:root[data-theme="ice"] .nav-menu a.active,
+:root[data-theme="ice"] .account-action:hover,
+:root[data-theme="ice"] .theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.48);
+    color: #ffffff;
+}
+
+:root[data-theme="ice"] .account-slot {
+    border-left-color: rgba(255, 255, 255, 0.28);
+}
+
+:root[data-theme="ice"] .stream-card,
+:root[data-theme="ice"] .field-card,
+:root[data-theme="ice"] .card,
+:root[data-theme="ice"] .toolbar,
+:root[data-theme="ice"] .layout-switcher,
+:root[data-theme="ice"] .panel,
+:root[data-theme="ice"] .user-panel,
+:root[data-theme="ice"] .audit-panel {
+    background: rgba(250, 253, 255, 0.88);
+    border-color: rgba(40, 84, 122, 0.20);
+    box-shadow: 0 12px 36px rgba(16, 52, 86, 0.14);
+}
+
+@media (max-width: 768px) {
+    :root[data-theme="ice"] body {
+        background-attachment: scroll;
+        background-position: center top;
+        background-size: auto 920px;
+    }
 }
 
 :root[data-theme="sand"] {

@@ -6,6 +6,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 THEME_SCRIPT = PROJECT_ROOT / "web/theme.js"
 SAND_TEXTURE = PROJECT_ROOT / "web/sand-texture.svg"
 SAND_BACKGROUND = PROJECT_ROOT / "web/sand-waves-v2.webp"
+ICE_BACKGROUND = PROJECT_ROOT / "web/curling-two-sheets.webp"
 THEME_STYLES = (
     PROJECT_ROOT / "web/style.css",
     PROJECT_ROOT / "app/templates/theme.css",
@@ -74,10 +75,12 @@ class ThemeUiTests(unittest.TestCase):
                 self.assertIn(':root[data-theme="sand"] .account-action', source)
                 self.assertIn(':root[data-theme="sand"] .topbar::before', source)
                 self.assertIn("width: 100vw", source)
-                self.assertIn('calc(32% - 1px)', source)
-                self.assertIn('calc(50% - 1px)', source)
-                self.assertIn('calc(68% - 1px)', source)
-                self.assertIn(':root[data-theme="ice"] .topbar', source)
+                self.assertIn('url("/curling-two-sheets.webp?v=1")', source)
+                self.assertIn("background-attachment: fixed", source)
+                self.assertIn(':root[data-theme="ice"] .topbar::before', source)
+                self.assertIn(':root[data-theme="ice"] .stream-card', source)
+                self.assertIn(':root[data-theme="ice"] .user-panel', source)
+                self.assertIn("background-size: auto 920px", source)
 
     def test_light_themes_define_readable_code_and_disabled_text(self):
         expected = (
@@ -110,6 +113,14 @@ class ThemeUiTests(unittest.TestCase):
         self.assertEqual(source[:4], b"RIFF")
         self.assertEqual(source[8:12], b"WEBP")
         self.assertGreater(len(source), 20_000)
+        self.assertLess(len(source), 200_000)
+
+    def test_ice_background_is_local_optimized_webp(self):
+        source = ICE_BACKGROUND.read_bytes()
+
+        self.assertEqual(source[:4], b"RIFF")
+        self.assertEqual(source[8:12], b"WEBP")
+        self.assertGreater(len(source), 50_000)
         self.assertLess(len(source), 200_000)
 
 
