@@ -14,6 +14,9 @@
     --success: #43d17a;
     --warning: #ffb74d;
     --error: #ff6b6b;
+    --code-text: #cfe7ff;
+    --control-background: rgba(0, 0, 0, 0.18);
+    --disabled-card-opacity: var(--disabled-card-opacity);
     --radius: 10px;
 }
 
@@ -30,7 +33,10 @@
     --primary: #1671b1;
     --primary-strong: #0a568d;
     --text: #173246;
-    --text-muted: #587386;
+    --text-muted: #405f73;
+    --code-text: #0a568d;
+    --control-background: rgba(20, 94, 145, 0.10);
+    --disabled-card-opacity: 0.76;
     --success: #18864a;
     --warning: #9a5b00;
     --error: #c83e45;
@@ -83,7 +89,10 @@
     --primary: #95651f;
     --primary-strong: #70480f;
     --text: #342b21;
-    --text-muted: #6c604f;
+    --text-muted: #5e503f;
+    --code-text: #70480f;
+    --control-background: rgba(91, 73, 48, 0.10);
+    --disabled-card-opacity: 0.76;
     --success: #397846;
     --warning: #8d590c;
     --error: #ac4139;
@@ -607,10 +616,10 @@ video {
 }
 
 .stream-url-value {
-    background: rgba(0, 0, 0, 0.17);
+    background: var(--control-background);
     border: 1px solid var(--border);
     border-radius: 6px;
-    color: #cfe7ff;
+    color: var(--code-text);
     display: block;
     font: 11px/1.4 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
     overflow-wrap: anywhere;
