@@ -139,6 +139,8 @@ def migrate_v1_to_v2(config):
     for field_id, field in migrated["fields"].items():
         if not isinstance(field_id, str) or not FIELD_ID_RE.fullmatch(field_id):
             raise ConfigMigrationError(f"invalid field ID: {field_id!r}")
+        if not isinstance(field, dict):
+            raise ConfigMigrationError(f"field {field_id} must be an object")
         validate_v1_field(field_id, field)
         field["restream_urls"] = [
             {"url": url, "audio_mode": "source"}
