@@ -18,7 +18,7 @@
 }
 
 
-:root[data-theme="light"] {
+:root[data-theme="ice"] {
     color-scheme: light;
     --background: #eef3f6;
     --background-accent: #dbe8ee;
@@ -36,11 +36,37 @@
     --error: #c83e45;
 }
 
-:root[data-theme="light"] body {
+:root[data-theme="ice"] body {
     background:
         radial-gradient(circle at 10% 0%, rgba(37, 136, 201, 0.13), transparent 32rem),
         linear-gradient(145deg, #f8fafb 0%, var(--background) 55%, var(--background-accent) 145%);
 }
+
+:root[data-theme="sand"] {
+    color-scheme: light;
+    --background: #ead8b7;
+    --background-accent: #c9aa73;
+    --surface: rgba(255, 249, 234, 0.96);
+    --surface-raised: #f1dfba;
+    --surface-soft: rgba(101, 67, 28, 0.08);
+    --border: rgba(111, 76, 37, 0.24);
+    --border-strong: rgba(174, 105, 35, 0.52);
+    --primary: #a85f19;
+    --primary-strong: #84450e;
+    --text: #3d2b1b;
+    --text-muted: #735d47;
+    --success: #397846;
+    --warning: #9a5a08;
+    --error: #b53f36;
+}
+
+:root[data-theme="sand"] body {
+    background:
+        radial-gradient(circle, rgba(112, 72, 31, 0.16) 0 0.7px, transparent 0.9px) 0 0 / 9px 9px,
+        radial-gradient(circle, rgba(255, 255, 255, 0.32) 0 0.8px, transparent 1px) 4px 5px / 13px 13px,
+        linear-gradient(145deg, #f5e8ca 0%, var(--background) 55%, var(--background-accent) 145%);
+}
+
 
 * {
     box-sizing: border-box;
@@ -215,6 +241,54 @@ body {
     background: var(--surface-raised);
     border-color: var(--border-strong);
 }
+
+.theme-picker {
+    flex: 0 0 34px;
+    position: relative;
+}
+
+.theme-menu {
+    background: var(--surface-raised);
+    border: 1px solid var(--border-strong);
+    border-radius: 9px;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
+    display: grid;
+    gap: 3px;
+    min-width: 132px;
+    padding: 5px;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 7px);
+    z-index: 1200;
+}
+
+.theme-menu[hidden] {
+    display: none;
+}
+
+.theme-option {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 9px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.theme-option:hover,
+.theme-option.active {
+    background: var(--surface-soft);
+    border-color: var(--border);
+}
+
+.theme-option.active {
+    color: var(--primary);
+}
+
 
 .page-heading {
     align-items: flex-end;
