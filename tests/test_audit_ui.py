@@ -53,6 +53,9 @@ class AuditUiTests(unittest.TestCase):
         self.assertIn("body.replaceChildren()", page)
         self.assertNotIn("innerHTML", page)
         self.assertIn("/admin/api/audit", page)
+        self.assertIn('id="sinceFilter"', page)
+        self.assertIn('id="untilFilter"', page)
+        self.assertIn("new Date(since).toISOString()", page)
         self.assertIn("window.setInterval(loadAudit, 15000)", page)
 
 
