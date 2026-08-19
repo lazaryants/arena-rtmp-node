@@ -44,29 +44,30 @@
 
 :root[data-theme="sand"] {
     color-scheme: light;
-    --background: #ead8b7;
-    --background-accent: #c9aa73;
-    --surface: rgba(255, 249, 234, 0.96);
-    --surface-raised: #f1dfba;
-    --surface-soft: rgba(101, 67, 28, 0.08);
-    --border: rgba(111, 76, 37, 0.24);
-    --border-strong: rgba(174, 105, 35, 0.52);
-    --primary: #a85f19;
-    --primary-strong: #84450e;
-    --text: #3d2b1b;
-    --text-muted: #735d47;
+    --background: #dfd9ca;
+    --background-accent: #b9ad92;
+    --surface: rgba(249, 246, 236, 0.96);
+    --surface-raised: #eee7d7;
+    --surface-soft: rgba(91, 73, 48, 0.08);
+    --border: rgba(96, 78, 54, 0.24);
+    --border-strong: rgba(151, 105, 43, 0.52);
+    --primary: #95651f;
+    --primary-strong: #70480f;
+    --text: #342b21;
+    --text-muted: #6c604f;
     --success: #397846;
-    --warning: #9a5a08;
-    --error: #b53f36;
+    --warning: #8d590c;
+    --error: #ac4139;
 }
 
 :root[data-theme="sand"] body {
-    background:
-        radial-gradient(circle, rgba(112, 72, 31, 0.16) 0 0.7px, transparent 0.9px) 0 0 / 9px 9px,
-        radial-gradient(circle, rgba(255, 255, 255, 0.32) 0 0.8px, transparent 1px) 4px 5px / 13px 13px,
-        linear-gradient(145deg, #f5e8ca 0%, var(--background) 55%, var(--background-accent) 145%);
+    background-image:
+        url("/sand-texture.svg?v=1"),
+        radial-gradient(circle, rgba(95, 76, 50, 0.10) 0 0.55px, transparent 0.8px),
+        linear-gradient(145deg, #eee9dc 0%, var(--background) 58%, var(--background-accent) 145%);
+    background-position: 0 0, 3px 4px, 0 0;
+    background-size: 560px 360px, 17px 17px, cover;
 }
-
 
 * {
     box-sizing: border-box;
