@@ -12,7 +12,7 @@ readonly SERVICES=(
     arena-restream-manager.service
 )
 readonly MANAGED_DIRECTORIES=(
-    app docs legacy nginx scripts systemd tests web
+    app docs legacy logrotate nginx scripts systemd tests web
 )
 readonly MANAGED_FILES=(
     .gitignore README.md requirements.txt
@@ -233,6 +233,7 @@ replace_managed_files() {
             "${TARGET}/app" \
             "${TARGET}/docs" \
             "${TARGET}/legacy" \
+            "${TARGET}/logrotate" \
             "${TARGET}/nginx" \
             "${TARGET}/scripts" \
             "${TARGET}/systemd" \
