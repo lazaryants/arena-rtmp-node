@@ -391,7 +391,8 @@
                     </label>
                     {% if can_manage_destinations %}
                     <select class="audio-mode-select"
-                            id="audio-mode-{{ field_id }}-{{ url_data.index }}">
+                            id="audio-mode-{{ field_id }}-{{ url_data.index }}"
+                            onchange="saveAudioMode({{ field_id }}, {{ url_data.index }})">
                         <option value="source"
                                 {% if url_data.audio_mode == 'source' %}selected{% endif %}>
                             Source audio
@@ -877,6 +878,54 @@
                 showToast('Destination saved.');
             } catch (error) {
                 showToast(`Save failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function saveAudioMode(fieldId, urlIndex) {
+            const select = document.getElementById(
+                `audio-mode-${fieldId}-${urlIndex}`
+            );
+            const audioMode = select.value;
+            const startButton = document.getElementById(
+                `start-${fieldId}-${urlIndex}`
+            );
+            const stopButton = document.getElementById(
+                `stop-${fieldId}-${urlIndex}`
+            );
+
+            select.disabled = true;
+            if (startButton) startButton.disabled = true;
+            if (stopButton) stopButton.disabled = true;
+
+            try {
+                await requestJson(
+                    `/admin/api/restream-urls/${fieldId}/${urlIndex}`,
+                    {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({audio_mode: audioMode})
+                    }
+                );
+                await refreshFieldCard(fieldId);
+                showToast(
+                    'Audio mode saved. Start the destination to apply it.'
+                );
+            } catch (error) {
+                showToast(
+                    `Audio mode save failed: ${error.message}`,
+                    'error'
+                );
+                try {
+                    await refreshFieldCard(fieldId);
+                } catch (refreshError) {
+                    select.disabled = false;
+                    if (startButton) startButton.disabled = false;
+                    if (stopButton) stopButton.disabled = false;
+                    console.warn(
+                        'Failed to refresh destination after save error:',
+                        refreshError
+                    );
+                }
             }
         }
 
