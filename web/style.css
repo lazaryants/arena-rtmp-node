@@ -156,6 +156,29 @@ body {
     gap: 9px;
 }
 
+.details-toggle {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font: 600 11px/1 Inter, "Segoe UI", sans-serif;
+    min-height: 34px;
+    padding: 0 11px;
+}
+
+.details-toggle:hover {
+    background: var(--surface-soft);
+    border-color: var(--border-strong);
+    color: var(--text);
+}
+
+.details-toggle[aria-pressed="true"] {
+    background: rgba(100, 181, 246, 0.13);
+    border-color: var(--border-strong);
+    color: var(--primary);
+}
+
 .layout-switcher {
     align-items: center;
     background: var(--surface);
@@ -327,6 +350,10 @@ video {
     object-fit: contain;
     position: absolute;
     width: 100%;
+}
+
+.grid.details-hidden .stream-details {
+    display: none;
 }
 
 .stream-details {
