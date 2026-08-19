@@ -302,11 +302,35 @@
                 <div class="brand-subtitle">Receiving and distribution server</div>
             </div>
         </div>
-        <nav class="nav-menu" aria-label="Main navigation">
-            <a href="/">Monitoring</a>
-            {% if can_configure %}<a href="/config/">Configuration</a>{% endif %}
-            <a href="/admin/" class="active">Restreams</a>
-        </nav>
+        <div class="topbar-actions">
+            <nav class="nav-menu" aria-label="Main navigation">
+                <a href="/">Monitoring</a>
+                {% if can_configure %}
+                <a href="/config/">Configuration</a>
+                {% else %}
+                <span class="nav-placeholder" aria-hidden="true">Configuration</span>
+                {% endif %}
+                <a href="/admin/" class="active">Restreams</a>
+                {% if can_manage_users %}
+                <a href="/admin/users/">Users</a>
+                {% else %}
+                <span class="nav-placeholder" aria-hidden="true">Users</span>
+                {% endif %}
+            </nav>
+            <div class="account-slot">
+                {% if rbac_enabled and web_user %}
+                <span class="account-identity">
+                    {{ web_user.username }} · {{ web_user.role }}
+                </span>
+                <form action="/admin/logout" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button class="account-action" type="submit">Logout</button>
+                </form>
+                {% else %}
+                <span class="account-identity">Local admin</span>
+                {% endif %}
+            </div>
+        </div>
     </header>
 
     <div class="page-heading">
@@ -321,15 +345,6 @@
                 <button type="button" data-columns="3">3</button>
                 <button type="button" data-columns="4">4</button>
             </div>
-            {% if rbac_enabled and web_user %}
-            <div class="logout">
-                <span>{{ web_user.username }} · {{ web_user.role }}</span>
-                <form action="/admin/logout" method="post">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button class="btn" type="submit">Logout</button>
-                </form>
-            </div>
-            {% endif %}
         </div>
     </div>
     

@@ -130,6 +130,49 @@ class UserStore:
         account["enabled"] = False
         self.save(payload)
 
+    def public_user(self, username):
+        """Return safe account metadata for one user."""
+        account = self.load()["users"].get(username)
+        if account is None:
+            return None
+        return {
+            "username": username,
+            "role": account["role"],
+            "enabled": account.get("enabled", True),
+        }
+
+    def set_role(self, username, role):
+        """Change a user's role without replacing the password hash."""
+        if role not in ROLES:
+            raise UserStoreError("Invalid user role")
+        payload = self.load()
+        account = payload["users"].get(username)
+        if account is None:
+            raise UserStoreError("User not found")
+        account["role"] = role
+        self.save(payload)
+
+    def set_enabled(self, username, enabled):
+        """Enable or disable an existing user."""
+        payload = self.load()
+        account = payload["users"].get(username)
+        if account is None:
+            raise UserStoreError("User not found")
+        account["enabled"] = bool(enabled)
+        self.save(payload)
+
+    def reset_password(self, username, password):
+        """Replace only an existing user's password hash."""
+        account = self.public_user(username)
+        if account is None:
+            raise UserStoreError("User not found")
+        self.set_user(
+            username,
+            password,
+            account["role"],
+            enabled=account["enabled"],
+        )
+
     def authenticate(self, username, password):
         account = self.load()["users"].get(username)
         if (

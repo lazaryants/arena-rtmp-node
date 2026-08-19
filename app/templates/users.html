@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arena RTMP Node — Users</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=1">
+    <style>
+        {% include 'theme.css' %}
+        .users-layout {
+            display: grid;
+            gap: 18px;
+            grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+            margin: 0 auto;
+            max-width: 1840px;
+        }
+        .user-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            padding: 18px;
+        }
+        .user-panel h2 {
+            font-size: 17px;
+            margin-bottom: 15px;
+        }
+        .form-group { margin-bottom: 13px; }
+        .form-group label {
+            color: var(--text-muted);
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .form-control {
+            background: var(--surface-soft);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            padding: 10px 11px;
+            width: 100%;
+        }
+        .password-policy {
+            color: var(--text-muted);
+            font-size: 11px;
+            line-height: 1.5;
+            margin: -5px 0 14px;
+        }
+        .users-list { display: grid; gap: 10px; }
+        .user-row {
+            align-items: center;
+            background: var(--surface-soft);
+            border: 1px solid var(--border);
+            border-radius: 11px;
+            display: grid;
+            gap: 12px;
+            grid-template-columns: minmax(130px, 1fr) 130px 110px 150px;
+            padding: 13px;
+        }
+        .user-name { font-weight: 700; }
+        .user-state {
+            color: var(--text-muted);
+            font-size: 11px;
+            margin-top: 3px;
+        }
+        .user-state.enabled { color: var(--success); }
+        .user-state.disabled { color: var(--error); }
+        .user-actions { display: flex; gap: 6px; justify-content: flex-end; }
+        .btn {
+            border: 0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            padding: 9px 11px;
+        }
+        .btn:disabled { cursor: not-allowed; opacity: 0.45; }
+        .btn-primary { background: var(--primary); color: #071526; }
+        .btn-secondary { background: var(--surface); color: var(--text); }
+        .btn-danger { background: rgba(255, 107, 107, 0.16); color: var(--error); }
+        .inline-password {
+            display: none;
+            gap: 8px;
+            grid-column: 1 / -1;
+            grid-template-columns: 1fr 1fr auto auto;
+        }
+        .inline-password.active { display: grid; }
+        .empty-state { color: var(--text-muted); padding: 20px 0; }
+        @media (max-width: 980px) {
+            .users-layout { grid-template-columns: 1fr; }
+            .user-row { grid-template-columns: 1fr 130px 110px; }
+            .user-actions { grid-column: 1 / -1; justify-content: flex-start; }
+        }
+        @media (max-width: 620px) {
+            .user-row { grid-template-columns: 1fr; }
+            .user-actions { grid-column: auto; }
+            .inline-password { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <span class="brand-mark" aria-hidden="true">🏐</span>
+            <div>
+                <div class="brand-title">Arena RTMP Node</div>
+                <div class="brand-subtitle">Receiving and distribution server</div>
+            </div>
+        </div>
+        <div class="topbar-actions">
+            <nav class="nav-menu" aria-label="Main navigation">
+                <a href="/">Monitoring</a>
+                <a href="/config/">Configuration</a>
+                <a href="/admin/">Restreams</a>
+                <a href="/admin/users/" class="active">Users</a>
+            </nav>
+            <div class="account-slot">
+                <span class="account-identity">
+                    {{ web_user.username }} · {{ web_user.role }}
+                </span>
+                <form action="/admin/logout" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button class="account-action" type="submit">Logout</button>
+                </form>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="page-heading container">
+            <div>
+                <h1>User management</h1>
+                <p>Create accounts, assign roles and revoke access</p>
+            </div>
+            <span class="page-badge">Admin only</span>
+        </div>
+
+        <div class="alert" id="alert" role="status"></div>
+
+        <div class="users-layout">
+            <section class="user-panel">
+                <h2>Create user</h2>
+                <form id="createUserForm">
+                    <div class="form-group">
+                        <label for="newUsername">Username</label>
+                        <input class="form-control"
+                               id="newUsername"
+                               maxlength="64"
+                               autocomplete="off"
+                               required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newRole">Role</label>
+                        <select class="form-control" id="newRole">
+                            {% for role in roles %}
+                            <option value="{{ role }}">{{ role }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">Password</label>
+                        <input class="form-control"
+                               id="newPassword"
+                               type="password"
+                               autocomplete="new-password"
+                               required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newPasswordRepeat">Repeat password</label>
+                        <input class="form-control"
+                               id="newPasswordRepeat"
+                               type="password"
+                               autocomplete="new-password"
+                               required>
+                    </div>
+                    <p class="password-policy">
+                        At least 8 characters, uppercase and lowercase letters,
+                        and at least one special character.
+                    </p>
+                    <button class="btn btn-primary" type="submit">
+                        Create user
+                    </button>
+                </form>
+            </section>
+
+            <section class="user-panel">
+                <h2>Accounts</h2>
+                <div class="users-list" id="usersList"></div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        const CSRF_TOKEN = {{ csrf_token | tojson }};
+        const CURRENT_USERNAME = {{ web_user.username | tojson }};
+        const ROLES = {{ roles | list | tojson }};
+        let users = {{ users | tojson }};
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert ${type}`;
+            window.setTimeout(() => {
+                alert.className = 'alert';
+            }, 5000);
+        }
+
+        async function requestJson(url, options = {}) {
+            options.headers = {
+                ...(options.headers || {}),
+                'X-CSRF-Token': CSRF_TOKEN,
+            };
+            const response = await fetch(url, options);
+            const payload = await response.json();
+            if (!response.ok || payload.success === false) {
+                throw new Error(payload.message || `HTTP ${response.status}`);
+            }
+            return payload;
+        }
+
+        async function loadUsers() {
+            const response = await fetch('/admin/api/users', {
+                cache: 'no-store',
+            });
+            const payload = await response.json();
+            if (!response.ok || !payload.success) {
+                throw new Error(payload.message || 'Unable to load users');
+            }
+            users = payload.users;
+            renderUsers();
+        }
+
+        function roleOptions(user) {
+            return ROLES.map(role => (
+                `<option value="${role}" ${role === user.role ? 'selected' : ''}>`
+                + `${role}</option>`
+            )).join('');
+        }
+
+        function renderUsers() {
+            const list = document.getElementById('usersList');
+            if (!users.length) {
+                list.innerHTML = '<div class="empty-state">No users configured.</div>';
+                return;
+            }
+            list.innerHTML = users.map(user => {
+                const safeUsername = escapeHtml(user.username);
+                const encodedUsername = encodeURIComponent(user.username);
+                const ownAccount = user.username === CURRENT_USERNAME;
+                return `
+                    <div class="user-row" data-username="${safeUsername}">
+                        <div>
+                            <div class="user-name">${safeUsername}</div>
+                            <div class="user-state ${user.enabled ? 'enabled' : 'disabled'}">
+                                ${user.enabled ? 'Enabled' : 'Disabled'}
+                                ${ownAccount ? ' · current account' : ''}
+                            </div>
+                        </div>
+                        <select class="form-control"
+                                aria-label="Role for ${safeUsername}"
+                                onchange="changeRole('${encodedUsername}', this.value)">
+                            ${roleOptions(user)}
+                        </select>
+                        <button class="btn ${user.enabled ? 'btn-danger' : 'btn-secondary'}"
+                                type="button"
+                                onclick="changeEnabled('${encodedUsername}', ${!user.enabled})"
+                                ${ownAccount && user.enabled ? 'disabled' : ''}>
+                            ${user.enabled ? 'Disable' : 'Enable'}
+                        </button>
+                        <div class="user-actions">
+                            <button class="btn btn-secondary"
+                                    type="button"
+                                    onclick="togglePassword('${encodedUsername}')">
+                                New password
+                            </button>
+                        </div>
+                        <div class="inline-password"
+                             id="password-${encodedUsername}">
+                            <input class="form-control"
+                                   type="password"
+                                   autocomplete="new-password"
+                                   placeholder="New password">
+                            <input class="form-control"
+                                   type="password"
+                                   autocomplete="new-password"
+                                   placeholder="Repeat password">
+                            <button class="btn btn-primary"
+                                    type="button"
+                                    onclick="savePassword('${encodedUsername}')">
+                                Save
+                            </button>
+                            <button class="btn btn-secondary"
+                                    type="button"
+                                    onclick="togglePassword('${encodedUsername}', false)">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function changeRole(encodedUsername, role) {
+            try {
+                const username = decodeURIComponent(encodedUsername);
+                await requestJson(
+                    `/admin/api/users/${encodedUsername}/role`,
+                    {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({role}),
+                    }
+                );
+                showAlert(`Role for ${username} updated.`, 'success');
+                await loadUsers();
+            } catch (error) {
+                showAlert(error.message, 'error');
+                await loadUsers();
+            }
+        }
+
+        async function changeEnabled(encodedUsername, enabled) {
+            try {
+                await requestJson(
+                    `/admin/api/users/${encodedUsername}/enabled`,
+                    {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({enabled}),
+                    }
+                );
+                showAlert(enabled ? 'User enabled.' : 'User disabled.', 'success');
+                await loadUsers();
+            } catch (error) {
+                showAlert(error.message, 'error');
+                await loadUsers();
+            }
+        }
+
+        function togglePassword(encodedUsername, force) {
+            const panel = document.getElementById(
+                `password-${encodedUsername}`
+            );
+            panel.classList.toggle(
+                'active',
+                force === undefined
+                    ? !panel.classList.contains('active')
+                    : force
+            );
+            if (panel.classList.contains('active')) {
+                panel.querySelector('input').focus();
+            } else {
+                panel.querySelectorAll('input').forEach(input => {
+                    input.value = '';
+                });
+            }
+        }
+
+        async function savePassword(encodedUsername) {
+            const panel = document.getElementById(
+                `password-${encodedUsername}`
+            );
+            const inputs = panel.querySelectorAll('input');
+            if (inputs[0].value !== inputs[1].value) {
+                showAlert('Passwords do not match.', 'error');
+                return;
+            }
+            try {
+                await requestJson(
+                    `/admin/api/users/${encodedUsername}/password`,
+                    {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({password: inputs[0].value}),
+                    }
+                );
+                togglePassword(encodedUsername, false);
+                showAlert('Password updated.', 'success');
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        }
+
+        document.getElementById('createUserForm').addEventListener(
+            'submit',
+            async event => {
+                event.preventDefault();
+                const password = document.getElementById('newPassword').value;
+                const repeated = document.getElementById(
+                    'newPasswordRepeat'
+                ).value;
+                if (password !== repeated) {
+                    showAlert('Passwords do not match.', 'error');
+                    return;
+                }
+                try {
+                    await requestJson('/admin/api/users', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            username: document.getElementById(
+                                'newUsername'
+                            ).value.trim(),
+                            role: document.getElementById('newRole').value,
+                            password,
+                        }),
+                    });
+                    event.target.reset();
+                    showAlert('User created.', 'success');
+                    await loadUsers();
+                } catch (error) {
+                    showAlert(error.message, 'error');
+                }
+            }
+        );
+
+        renderUsers();
+    </script>
+</body>
+</html>
