@@ -60,7 +60,7 @@ class MonitoringNavigationTests(unittest.TestCase):
         self.assertIn("video.poster = previewCanvas.toDataURL", script)
         self.assertIn("playsinline", script)
         self.assertIn("new IntersectionObserver", script)
-        self.assertIn("state.ratio >= 0.25", script)
+        self.assertIn("state.ratio >= 0.1", script)
         self.assertIn("entry.intersectionRatio", script)
         self.assertIn("setPlaybackAllowed", script)
         self.assertIn("viewportObserver.disconnect()", script)
