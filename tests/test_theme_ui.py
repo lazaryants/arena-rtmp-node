@@ -67,16 +67,17 @@ class ThemeUiTests(unittest.TestCase):
                 self.assertIn(".theme-picker", source)
                 self.assertIn(".theme-menu", source)
                 self.assertIn("flex: 0 0 34px", source)
-                self.assertIn('url("/sand-texture.svg?v=2")', source)
-                self.assertIn("360px 260px", source)
+                self.assertIn('url("/sand-texture.svg?v=3")', source)
+                self.assertIn("320px 240px", source)
 
-    def test_sand_texture_has_distorted_ripple_relief(self):
+    def test_sand_texture_has_visible_irregular_grains(self):
         source = SAND_TEXTURE.read_text(encoding="utf-8")
 
-        self.assertIn("<feTurbulence", source)
-        self.assertIn("<feDisplacementMap", source)
-        self.assertIn("<feGaussianBlur", source)
-        self.assertGreaterEqual(source.count("<path"), 20)
+        self.assertGreaterEqual(source.count("<ellipse"), 300)
+        self.assertNotIn("<path", source)
+        self.assertIn('fill="#6f604d"', source)
+        self.assertIn('fill="#fffdf7"', source)
+
 
 
 if __name__ == "__main__":
