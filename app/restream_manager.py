@@ -14,13 +14,13 @@ try:
     from .monitoring import health_snapshot, metrics_snapshot
     from .config_store import AUDIO_MODES, ConfigStore, ConfigValidationError
     from .supervisor_client import SupervisorClient, SupervisorUnavailable
-    from .access_control import UserStore, UserStoreError, role_allows
+    from .access_control import ROLES, UserStore, UserStoreError, role_allows
 except ImportError:
     from settings import SETTINGS
     from monitoring import health_snapshot, metrics_snapshot
     from config_store import AUDIO_MODES, ConfigStore, ConfigValidationError
     from supervisor_client import SupervisorClient, SupervisorUnavailable
-    from access_control import UserStore, UserStoreError, role_allows
+    from access_control import ROLES, UserStore, UserStoreError, role_allows
 
 app = Flask(
     __name__,
@@ -89,6 +89,7 @@ def template_access_context():
         "can_control": role_allows(role, "operator"),
         "can_manage_destinations": role_allows(role, "manager"),
         "can_configure": role_allows(role, "admin"),
+        "can_manage_users": role_allows(role, "admin"),
     }
 
 
@@ -227,6 +228,137 @@ def api_session():
         "username": account["username"],
         "role": account["role"],
         "csrf_token": csrf_token(),
+    })
+
+
+def enabled_admin_count():
+    """Count enabled administrators without exposing credential hashes."""
+    return sum(
+        1
+        for account in USER_STORE.public_users()
+        if account["enabled"] and account["role"] == "admin"
+    )
+
+
+def user_api_error(error, status_code=400):
+    return jsonify({
+        "success": False,
+        "message": str(error),
+    }), status_code
+
+
+@app.route("/users/")
+def users_page():
+    return render_template(
+        "users.html",
+        users=USER_STORE.public_users(),
+        roles=ROLES,
+        **template_access_context(),
+    )
+
+
+@app.route("/api/users", methods=["GET"])
+def api_users():
+    return jsonify({
+        "success": True,
+        "users": USER_STORE.public_users(),
+        "roles": list(ROLES),
+    })
+
+
+@app.route("/api/users", methods=["POST"])
+def api_create_user():
+    payload = request.get_json(silent=True) or {}
+    username = str(payload.get("username", "")).strip()
+    password = str(payload.get("password", ""))
+    role = str(payload.get("role", ""))
+
+    if USER_STORE.public_user(username) is not None:
+        return user_api_error("User already exists", 409)
+    try:
+        USER_STORE.set_user(username, password, role)
+    except UserStoreError as error:
+        return user_api_error(error)
+    return jsonify({
+        "success": True,
+        "message": f"User {username!r} created",
+    }), 201
+
+
+@app.route("/api/users/<username>/role", methods=["PUT"])
+def api_update_user_role(username):
+    payload = request.get_json(silent=True) or {}
+    role = str(payload.get("role", ""))
+    account = USER_STORE.public_user(username)
+    if account is None:
+        return user_api_error("User not found", 404)
+    if (
+        account["enabled"]
+        and account["role"] == "admin"
+        and role != "admin"
+        and enabled_admin_count() <= 1
+    ):
+        return user_api_error("The last enabled administrator cannot be demoted")
+    try:
+        USER_STORE.set_role(username, role)
+    except UserStoreError as error:
+        return user_api_error(error)
+    return jsonify({
+        "success": True,
+        "message": f"Role for {username!r} updated",
+    })
+
+
+@app.route("/api/users/<username>/enabled", methods=["PUT"])
+def api_update_user_enabled(username):
+    payload = request.get_json(silent=True) or {}
+    enabled = payload.get("enabled")
+    if not isinstance(enabled, bool):
+        return user_api_error("Enabled must be a boolean")
+
+    account = USER_STORE.public_user(username)
+    if account is None:
+        return user_api_error("User not found", 404)
+    current = current_web_user()
+    if (
+        not enabled
+        and current is not None
+        and username == current["username"]
+    ):
+        return user_api_error("You cannot disable your own account")
+    if (
+        not enabled
+        and account["enabled"]
+        and account["role"] == "admin"
+        and enabled_admin_count() <= 1
+    ):
+        return user_api_error("The last enabled administrator cannot be disabled")
+    try:
+        USER_STORE.set_enabled(username, enabled)
+    except UserStoreError as error:
+        return user_api_error(error)
+    return jsonify({
+        "success": True,
+        "message": (
+            f"User {username!r} enabled"
+            if enabled
+            else f"User {username!r} disabled"
+        ),
+    })
+
+
+@app.route("/api/users/<username>/password", methods=["PUT"])
+def api_reset_user_password(username):
+    payload = request.get_json(silent=True) or {}
+    password = str(payload.get("password", ""))
+    try:
+        USER_STORE.reset_password(username, password)
+    except UserStoreError as error:
+        status_code = 404 if str(error) == "User not found" else 400
+        return user_api_error(error, status_code)
+    return jsonify({
+        "success": True,
+        "message": f"Password for {username!r} updated",
     })
 
 
