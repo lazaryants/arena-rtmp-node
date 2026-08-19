@@ -62,10 +62,10 @@
 
 :root[data-theme="sand"] body {
     background-image:
-        url("/sand-texture.svg?v=2"),
+        url("/sand-texture.svg?v=3"),
         linear-gradient(145deg, #eee9dc 0%, var(--background) 58%, var(--background-accent) 145%);
     background-position: 0 0, 0 0;
-    background-size: 360px 260px, cover;
+    background-size: 320px 240px, cover;
 }
 
 :root[data-theme="sand"] .topbar {
