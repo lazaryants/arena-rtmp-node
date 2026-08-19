@@ -12,13 +12,13 @@ from urllib.parse import urlencode
 try:
     from .settings import SETTINGS
     from .monitoring import health_snapshot, metrics_snapshot
-    from .config_store import ConfigStore, ConfigValidationError
+    from .config_store import AUDIO_MODES, ConfigStore, ConfigValidationError
     from .supervisor_client import SupervisorClient, SupervisorUnavailable
     from .access_control import UserStore, UserStoreError, role_allows
 except ImportError:
     from settings import SETTINGS
     from monitoring import health_snapshot, metrics_snapshot
-    from config_store import ConfigStore, ConfigValidationError
+    from config_store import AUDIO_MODES, ConfigStore, ConfigValidationError
     from supervisor_client import SupervisorClient, SupervisorUnavailable
     from access_control import UserStore, UserStoreError, role_allows
 
@@ -646,6 +646,11 @@ def api_add_restream_url(field_id):
         
         if not new_url:
             return jsonify({'success': False, 'message': 'URL is empty'}), 400
+        if audio_mode not in AUDIO_MODES:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid audio mode',
+            }), 400
         
         config = load_config()
         
@@ -693,6 +698,11 @@ def api_update_restream_url(field_id, url_index):
         current = field['restream_urls'][url_index]
         new_url = data.get('url', current['url']).strip()
         audio_mode = data.get('audio_mode', current['audio_mode'])
+        if audio_mode not in AUDIO_MODES:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid audio mode',
+            }), 400
 
         success, message = stop_restream(field_id, url_index)
         if not success:
