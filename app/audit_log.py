@@ -135,6 +135,20 @@ class AuditLog:
         )
         return paths
 
+    @staticmethod
+    def _parse_time(value):
+        if not value:
+            return None
+        try:
+            parsed = datetime.fromisoformat(
+                str(value).replace("Z", "+00:00")
+            )
+        except ValueError:
+            raise ValueError("Invalid audit time filter")
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+
     def recent(
         self,
         *,
@@ -142,11 +156,15 @@ class AuditLog:
         actor=None,
         action=None,
         outcome=None,
+        since=None,
+        until=None,
     ):
         limit = max(1, min(int(limit), 500))
         actor_filter = self._safe_text(actor, 64).lower()
         action_filter = self._safe_text(action, 80).lower()
         outcome_filter = self._safe_text(outcome, 16).lower()
+        since_time = self._parse_time(since)
+        until_time = self._parse_time(until)
         records = []
 
         for path in self._paths():
@@ -161,6 +179,17 @@ class AuditLog:
                 try:
                     record = json.loads(line)
                 except json.JSONDecodeError:
+                    continue
+                record_time = self._parse_time(
+                    record.get("timestamp")
+                )
+                if since_time and (
+                    record_time is None or record_time < since_time
+                ):
+                    continue
+                if until_time and (
+                    record_time is None or record_time > until_time
+                ):
                     continue
                 if (
                     actor_filter
