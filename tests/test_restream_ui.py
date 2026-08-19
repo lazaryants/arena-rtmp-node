@@ -38,6 +38,24 @@ class RestreamUiTests(unittest.TestCase):
         self.assertIn("No audio track", self.template)
         self.assertIn("audio_mode: audioMode", self.template)
 
+    def test_audio_mode_change_is_saved_immediately(self):
+        self.assertIn(
+            "onchange=\"saveAudioMode(",
+            self.template,
+        )
+        self.assertIn(
+            "async function saveAudioMode(fieldId, urlIndex)",
+            self.template,
+        )
+        self.assertIn(
+            "JSON.stringify({audio_mode: audioMode})",
+            self.template,
+        )
+        self.assertIn(
+            "Audio mode saved. Start the destination to apply it.",
+            self.template,
+        )
+
     def test_destination_url_validation_accepts_only_rtmp_schemes(self):
         self.assertIn("rtmps?:", self.template)
         self.assertIn(
