@@ -20,26 +20,55 @@
 
 :root[data-theme="ice"] {
     color-scheme: light;
-    --background: #eef3f6;
-    --background-accent: #dbe8ee;
-    --surface: rgba(255, 255, 255, 0.96);
-    --surface-raised: #e8f0f4;
-    --surface-soft: rgba(20, 55, 82, 0.06);
-    --border: rgba(42, 72, 96, 0.18);
-    --border-strong: rgba(31, 126, 184, 0.42);
-    --primary: #2588c9;
-    --primary-strong: #126ca7;
-    --text: #172838;
-    --text-muted: #5d7182;
+    --background: #dceff7;
+    --background-accent: #b9dce9;
+    --surface: rgba(247, 252, 255, 0.96);
+    --surface-raised: #dceff7;
+    --surface-soft: rgba(20, 94, 145, 0.07);
+    --border: rgba(36, 91, 126, 0.20);
+    --border-strong: rgba(22, 113, 177, 0.48);
+    --primary: #1671b1;
+    --primary-strong: #0a568d;
+    --text: #173246;
+    --text-muted: #587386;
     --success: #18864a;
-    --warning: #a76000;
+    --warning: #9a5b00;
     --error: #c83e45;
 }
 
 :root[data-theme="ice"] body {
-    background:
-        radial-gradient(circle at 10% 0%, rgba(37, 136, 201, 0.13), transparent 32rem),
-        linear-gradient(145deg, #f8fafb 0%, var(--background) 55%, var(--background-accent) 145%);
+    background-image:
+        linear-gradient(
+            90deg,
+            transparent 0,
+            transparent calc(32% - 1px),
+            rgba(27, 111, 183, 0.22) calc(32% - 1px),
+            rgba(27, 111, 183, 0.22) calc(32% + 1px),
+            transparent calc(32% + 1px),
+            transparent calc(50% - 1px),
+            rgba(204, 48, 61, 0.20) calc(50% - 1px),
+            rgba(204, 48, 61, 0.20) calc(50% + 1px),
+            transparent calc(50% + 1px),
+            transparent calc(68% - 1px),
+            rgba(27, 111, 183, 0.22) calc(68% - 1px),
+            rgba(27, 111, 183, 0.22) calc(68% + 1px),
+            transparent calc(68% + 1px)
+        ),
+        radial-gradient(
+            circle at 50% 82%,
+            transparent 0 72px,
+            rgba(204, 48, 61, 0.13) 73px 75px,
+            transparent 76px
+        ),
+        radial-gradient(circle at 12% 4%, rgba(255, 255, 255, 0.72), transparent 29rem),
+        radial-gradient(circle at 86% 68%, rgba(112, 190, 219, 0.20), transparent 34rem),
+        linear-gradient(145deg, #edf9fd 0%, var(--background) 58%, var(--background-accent) 145%);
+}
+
+:root[data-theme="ice"] .topbar {
+    background: rgba(247, 252, 255, 0.93);
+    border-bottom-color: rgba(22, 113, 177, 0.36);
+    box-shadow: 0 7px 20px rgba(25, 92, 128, 0.08);
 }
 
 :root[data-theme="sand"] {
