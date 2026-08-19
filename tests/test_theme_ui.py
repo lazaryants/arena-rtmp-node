@@ -4,6 +4,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 THEME_SCRIPT = PROJECT_ROOT / "web/theme.js"
+SAND_TEXTURE = PROJECT_ROOT / "web/sand-texture.svg"
 THEME_STYLES = (
     PROJECT_ROOT / "web/style.css",
     PROJECT_ROOT / "app/templates/theme.css",
@@ -66,8 +67,15 @@ class ThemeUiTests(unittest.TestCase):
                 self.assertIn(".theme-picker", source)
                 self.assertIn(".theme-menu", source)
                 self.assertIn("flex: 0 0 34px", source)
-                self.assertIn("9px 9px", source)
-                self.assertIn("13px 13px", source)
+                self.assertIn('url("/sand-texture.svg?v=1")', source)
+                self.assertIn("560px 360px", source)
+
+    def test_sand_texture_has_distorted_ripple_relief(self):
+        source = SAND_TEXTURE.read_text(encoding="utf-8")
+
+        self.assertIn("<feTurbulence", source)
+        self.assertIn("<feDisplacementMap", source)
+        self.assertGreaterEqual(source.count("<path"), 20)
 
 
 if __name__ == "__main__":
