@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 from urllib.parse import parse_qs, urlparse
 
 from app import restream_manager
+from app.audit_log import AuditLog
 from app.config_store import ConfigStore
 
 
@@ -28,9 +29,18 @@ class ConfigApiTests(unittest.TestCase):
         })
         self.store_patch = patch.object(restream_manager, "CONFIG_STORE", self.store)
         self.store_patch.start()
+        self.audit_patch = patch.object(
+            restream_manager,
+            "AUDIT_LOG",
+            AuditLog(
+                Path(self.temporary_directory.name) / "audit.jsonl"
+            ),
+        )
+        self.audit_patch.start()
         self.client = restream_manager.app.test_client()
 
     def tearDown(self):
+        self.audit_patch.stop()
         self.store_patch.stop()
         self.temporary_directory.cleanup()
 

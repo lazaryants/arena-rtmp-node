@@ -12,6 +12,7 @@ from jinja2 import FileSystemLoader
 
 from app import restream_manager
 
+from app.audit_log import AuditLog
 from app.access_control import (
     ROLES,
     UserStore,
@@ -25,8 +26,18 @@ class AccessControlTests(unittest.TestCase):
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.path = Path(self.temporary_directory.name) / "users.json"
         self.store = UserStore(self.path)
+        self.audit = AuditLog(
+            Path(self.temporary_directory.name) / "audit.jsonl"
+        )
+        self.audit_patch = patch.object(
+            restream_manager,
+            "AUDIT_LOG",
+            self.audit,
+        )
+        self.audit_patch.start()
 
     def tearDown(self):
+        self.audit_patch.stop()
         self.temporary_directory.cleanup()
 
     def test_role_hierarchy(self):

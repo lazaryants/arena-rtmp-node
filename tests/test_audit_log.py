@@ -79,6 +79,20 @@ class AuditLogTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.audit.recent(since="not-a-time")
 
+    def test_refuses_directory_owned_by_another_user(self):
+        different_uid = self.root.stat().st_uid + 1
+        with (
+            patch("app.audit_log.os.geteuid", return_value=different_uid),
+            self.assertRaises(PermissionError),
+        ):
+            self.audit.append(
+                actor="root-test",
+                role="admin",
+                action="test.action",
+                outcome="success",
+            )
+        self.assertFalse(self.path.exists())
+
     def test_rotation_bounds_current_file(self):
         audit = AuditLog(
             self.path,
