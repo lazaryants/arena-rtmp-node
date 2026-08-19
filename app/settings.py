@@ -119,6 +119,13 @@ class Settings:
         )
 
     @property
+    def audit_file(self):
+        configured = os.environ.get("ARENA_RTMP_AUDIT_FILE")
+        return Path(configured) if configured else (
+            self.project_root / "state" / "audit.jsonl"
+        )
+
+    @property
     def run_dir(self):
         configured = os.environ.get("ARENA_RTMP_RUN_DIR")
         return Path(configured) if configured else self.project_root / "run"
