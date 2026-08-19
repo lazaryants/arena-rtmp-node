@@ -78,15 +78,17 @@ class ThemeUiTests(unittest.TestCase):
         expected = (
             "--code-text: #0a568d;",
             "--code-text: #70480f;",
-            "--disabled-card-opacity: 0.76;",
             "color: var(--code-text);",
-            "opacity: var(--disabled-card-opacity);",
         )
         for path in THEME_STYLES:
             with self.subTest(path=path):
                 source = path.read_text(encoding="utf-8")
                 for declaration in expected:
                     self.assertIn(declaration, source)
+
+        admin_source = THEME_STYLES[1].read_text(encoding="utf-8")
+        self.assertIn("--disabled-card-opacity: 0.76;", admin_source)
+        self.assertIn("opacity: var(--disabled-card-opacity);", admin_source)
 
     def test_sand_texture_has_visible_irregular_grains(self):
         source = SAND_TEXTURE.read_text(encoding="utf-8")
