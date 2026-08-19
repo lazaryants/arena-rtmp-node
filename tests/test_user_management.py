@@ -8,6 +8,7 @@ from jinja2 import FileSystemLoader
 
 from app import restream_manager
 from app.access_control import UserStore
+from app.audit_log import AuditLog
 
 
 class UserManagementTests(unittest.TestCase):
@@ -24,6 +25,14 @@ class UserManagementTests(unittest.TestCase):
         )
         self.client = restream_manager.app.test_client()
         self.settings = SimpleNamespace(rbac_enabled=True)
+        self.audit_patch = patch.object(
+            restream_manager,
+            "AUDIT_LOG",
+            AuditLog(
+                Path(self.temporary_directory.name) / "audit.jsonl"
+            ),
+        )
+        self.audit_patch.start()
         self.template_directory = (
             Path(__file__).resolve().parents[1]
             / "app"
@@ -31,6 +40,7 @@ class UserManagementTests(unittest.TestCase):
         )
 
     def tearDown(self):
+        self.audit_patch.stop()
         self.temporary_directory.cleanup()
 
     def authenticated_client(self, username="andrey", token="test-token"):

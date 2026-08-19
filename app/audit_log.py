@@ -54,6 +54,23 @@ class AuditLog:
                 safe[name] = cls._safe_text(value)
         return safe
 
+    def _verify_owner(self):
+        """Refuse writes outside state owned by the current service user."""
+        current_uid = os.geteuid()
+        directory_uid = self.path.parent.stat().st_uid
+        if directory_uid != current_uid:
+            raise PermissionError(
+                "Audit directory is not owned by the current service user"
+            )
+        try:
+            file_uid = self.path.stat().st_uid
+        except FileNotFoundError:
+            return
+        if file_uid != current_uid:
+            raise PermissionError(
+                "Audit file is not owned by the current service user"
+            )
+
     def _rotate_if_needed(self, incoming_size):
         try:
             current_size = self.path.stat().st_size
@@ -114,6 +131,7 @@ class AuditLog:
 
         with self._lock:
             self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            self._verify_owner()
             self._rotate_if_needed(len(encoded))
             descriptor = os.open(
                 self.path,
