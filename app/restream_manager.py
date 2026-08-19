@@ -268,8 +268,18 @@ def audit_mutating_request(response):
             safe_changes.append("password")
         if safe_changes:
             details["changes"] = ",".join(safe_changes)
+        for name in ("audio_mode", "enabled", "role"):
+            if name in payload:
+                details[name] = payload[name]
         if request.endpoint == "api_create_user":
             target["username"] = str(payload.get("username", ""))
+
+    if response.status_code >= 400 and response.is_json:
+        response_payload = response.get_json(silent=True)
+        if isinstance(response_payload, dict):
+            reason = response_payload.get("message")
+            if reason:
+                details["reason"] = reason
 
     record_audit(
         actor=actor.get("username"),
