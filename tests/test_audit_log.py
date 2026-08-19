@@ -71,6 +71,13 @@ class AuditLogTests(unittest.TestCase):
             "session.login",
         )
         self.assertEqual(len(self.audit.recent(limit=1)), 1)
+        timestamp = self.audit.recent(limit=1)[0]["timestamp"]
+        self.assertEqual(
+            len(self.audit.recent(since=timestamp, until=timestamp)),
+            1,
+        )
+        with self.assertRaises(ValueError):
+            self.audit.recent(since="not-a-time")
 
     def test_rotation_bounds_current_file(self):
         audit = AuditLog(
