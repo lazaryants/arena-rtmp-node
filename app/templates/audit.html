@@ -183,6 +183,7 @@
                             <th>Role</th>
                             <th>Action</th>
                             <th>Target</th>
+                            <th>Details</th>
                             <th>Result</th>
                         </tr>
                     </thead>
@@ -230,6 +231,7 @@
                 cell(row, record.role || 'anonymous');
                 cell(row, record.action || '', 'audit-action');
                 cell(row, formatTarget(record.target), 'audit-target');
+                cell(row, formatTarget(record.details), 'audit-target');
                 const resultCell = cell(row, '');
                 const badge = document.createElement('span');
                 badge.className = `outcome ${record.outcome}`;
