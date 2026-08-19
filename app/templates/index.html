@@ -120,6 +120,30 @@
             font-size: 0.85em;
         }
         .url-input:focus { outline: 2px solid #64B5F6; }
+        .audio-mode-row {
+            align-items: center;
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .audio-mode-row label {
+            color: rgba(255, 255, 255, 0.76);
+            font-size: 0.82em;
+            font-weight: 700;
+        }
+        .audio-mode-select {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 5px;
+            background: #17365d;
+            color: white;
+        }
+        .audio-mode-value {
+            color: #90CAF9;
+            font-size: 0.85em;
+            font-weight: 700;
+        }
         
         .url-actions {
             display: flex;
@@ -360,6 +384,39 @@
                     <span>Configured destination</span>
                 </div>
                 {% endif %}
+
+                <div class="audio-mode-row">
+                    <label for="audio-mode-{{ field_id }}-{{ url_data.index }}">
+                        Audio
+                    </label>
+                    {% if can_manage_destinations %}
+                    <select class="audio-mode-select"
+                            id="audio-mode-{{ field_id }}-{{ url_data.index }}">
+                        <option value="source"
+                                {% if url_data.audio_mode == 'source' %}selected{% endif %}>
+                            Source audio
+                        </option>
+                        <option value="silent"
+                                {% if url_data.audio_mode == 'silent' %}selected{% endif %}>
+                            Silent AAC
+                        </option>
+                        <option value="none"
+                                {% if url_data.audio_mode == 'none' %}selected{% endif %}>
+                            No audio track
+                        </option>
+                    </select>
+                    {% else %}
+                    <span class="audio-mode-value">
+                        {% if url_data.audio_mode == 'silent' %}
+                            Silent AAC
+                        {% elif url_data.audio_mode == 'none' %}
+                            No audio track
+                        {% else %}
+                            Source audio
+                        {% endif %}
+                    </span>
+                    {% endif %}
+                </div>
                 
                 <div class="url-actions">
                     <button class="btn btn-start"
@@ -436,6 +493,18 @@
                            autocomplete="off"
                            spellcheck="false">
                 </div>
+                <div class="dialog-input-group"
+                     id="dialogAudioGroup"
+                     hidden>
+                    <label class="dialog-label"
+                           for="dialogAudioMode">Audio mode</label>
+                    <select class="dialog-input"
+                            id="dialogAudioMode">
+                        <option value="source">Source audio</option>
+                        <option value="silent">Silent AAC</option>
+                        <option value="none">No audio track</option>
+                    </select>
+                </div>
                 <div class="dialog-error"
                      id="dialogError"
                      aria-live="assertive"></div>
@@ -510,6 +579,8 @@
             const message = document.getElementById('dialogMessage');
             const inputGroup = document.getElementById('dialogInputGroup');
             const input = document.getElementById('dialogInput');
+            const audioGroup = document.getElementById('dialogAudioGroup');
+            const audioMode = document.getElementById('dialogAudioMode');
             const error = document.getElementById('dialogError');
             const confirmButton = document.getElementById('dialogConfirm');
 
@@ -518,6 +589,8 @@
             inputGroup.hidden = !options.input;
             input.value = options.value || '';
             input.placeholder = options.placeholder || '';
+            audioGroup.hidden = !options.audioMode;
+            audioMode.value = options.audioMode || 'source';
             error.textContent = '';
             confirmButton.textContent = options.confirmLabel || 'Continue';
             confirmButton.classList.toggle(
@@ -530,6 +603,7 @@
                 activeDialog = {
                     resolve,
                     input: Boolean(options.input),
+                    audioMode: Boolean(options.audioMode),
                     validate: options.validate || null,
                 };
                 requestAnimationFrame(() => {
@@ -777,6 +851,9 @@
                 `input-${fieldId}-${urlIndex}`
             );
             const newUrl = input.value.trim();
+            const audioMode = document.getElementById(
+                `audio-mode-${fieldId}-${urlIndex}`
+            ).value;
             const validationError = validateDestinationUrl(newUrl);
             if (validationError) {
                 showToast(validationError, 'error');
@@ -790,7 +867,10 @@
                     {
                         method: 'PUT',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({url: newUrl})
+                        body: JSON.stringify({
+                            url: newUrl,
+                            audio_mode: audioMode
+                        })
                     }
                 );
                 await refreshFieldCard(fieldId);
@@ -801,15 +881,16 @@
         }
 
         async function addUrl(fieldId) {
-            const url = await showDialog({
+            const destination = await showDialog({
                 title: 'Add destination',
                 message: 'Enter the complete RTMP or RTMPS destination URL.',
                 input: true,
                 placeholder: 'rtmps://server.example/live/stream-key',
                 confirmLabel: 'Add destination',
                 validate: validateDestinationUrl,
+                audioMode: 'source',
             });
-            if (!url) return;
+            if (!destination) return;
 
             try {
                 await requestJson(
@@ -817,7 +898,7 @@
                     {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({url})
+                        body: JSON.stringify(destination)
                     }
                 );
                 await refreshFieldCard(fieldId);
@@ -1021,7 +1102,16 @@
                     input.focus();
                     return;
                 }
-                closeDialog(value);
+                if (activeDialog.audioMode) {
+                    closeDialog({
+                        url: value,
+                        audio_mode: document.getElementById(
+                            'dialogAudioMode'
+                        ).value,
+                    });
+                } else {
+                    closeDialog(value);
+                }
             }
         );
         document.addEventListener('keydown', event => {
