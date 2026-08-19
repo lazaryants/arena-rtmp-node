@@ -632,7 +632,11 @@ def api_get_restream_urls(field_id):
     
     destinations = field.get('restream_urls', [])
     
-    return jsonify({'success': True, 'destinations': destinations})
+    return jsonify({
+        'success': True,
+        'destinations': destinations,
+        'urls': [destination['url'] for destination in destinations],
+    })
 
 
 @app.route('/api/restream-urls/<int:field_id>', methods=['POST'])
