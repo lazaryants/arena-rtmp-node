@@ -113,6 +113,18 @@ class ConfigApiTests(unittest.TestCase):
         destination = self.store.load()["fields"]["1"]["restream_urls"][0]
         self.assertEqual(destination["audio_mode"], "silent")
 
+    def test_invalid_audio_mode_is_rejected_without_stopping(self):
+        with patch.object(restream_manager, "stop_restream") as stop:
+            response = self.client.post(
+                "/api/restream-urls/1",
+                json={
+                    "url": "rtmp://destination.example/live/token",
+                    "audio_mode": "surround",
+                },
+            )
+        self.assertEqual(response.status_code, 400)
+        stop.assert_not_called()
+
     def test_log_tail_is_bounded_and_returns_complete_last_lines(self):
         log_path = Path(self.temporary_directory.name) / "large.log"
         log_path.write_text(
