@@ -18,7 +18,7 @@
 }
 
 
-:root[data-theme="light"] {
+:root[data-theme="ice"] {
     color-scheme: light;
     --background: #eef3f6;
     --background-accent: #dbe8ee;
@@ -36,10 +36,42 @@
     --error: #c83e45;
 }
 
-:root[data-theme="light"] body {
+:root[data-theme="ice"] body {
     background:
         radial-gradient(circle at 10% 0%, rgba(37, 136, 201, 0.13), transparent 32rem),
         linear-gradient(145deg, #f8fafb 0%, var(--background) 55%, var(--background-accent) 145%);
+}
+
+:root[data-theme="sand"] {
+    color-scheme: light;
+    --background: #dfd9ca;
+    --background-accent: #b9ad92;
+    --surface: rgba(249, 246, 236, 0.96);
+    --surface-raised: #eee7d7;
+    --surface-soft: rgba(91, 73, 48, 0.08);
+    --border: rgba(96, 78, 54, 0.24);
+    --border-strong: rgba(151, 105, 43, 0.52);
+    --primary: #95651f;
+    --primary-strong: #70480f;
+    --text: #342b21;
+    --text-muted: #6c604f;
+    --success: #397846;
+    --warning: #8d590c;
+    --error: #ac4139;
+}
+
+:root[data-theme="sand"] body {
+    background-image:
+        url("/sand-texture.svg?v=3"),
+        linear-gradient(145deg, #eee9dc 0%, var(--background) 58%, var(--background-accent) 145%);
+    background-position: 0 0, 0 0;
+    background-size: 320px 240px, cover;
+}
+
+:root[data-theme="sand"] .topbar {
+    background: rgba(249, 246, 236, 0.92);
+    border-bottom-color: rgba(96, 78, 54, 0.38);
+    box-shadow: 0 7px 20px rgba(75, 58, 36, 0.08);
 }
 
 * {
@@ -205,6 +237,54 @@ body {
     background: var(--surface-raised);
     border-color: var(--border-strong);
 }
+
+.theme-picker {
+    flex: 0 0 34px;
+    position: relative;
+}
+
+.theme-menu {
+    background: var(--surface-raised);
+    border: 1px solid var(--border-strong);
+    border-radius: 9px;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
+    display: grid;
+    gap: 3px;
+    min-width: 132px;
+    padding: 5px;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 7px);
+    z-index: 1200;
+}
+
+.theme-menu[hidden] {
+    display: none;
+}
+
+.theme-option {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 9px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.theme-option:hover,
+.theme-option.active {
+    background: var(--surface-soft);
+    border-color: var(--border);
+}
+
+.theme-option.active {
+    color: var(--primary);
+}
+
 
 .page-heading {
     align-items: flex-end;
