@@ -68,10 +68,12 @@ class ThemeUiTests(unittest.TestCase):
                 self.assertIn(".theme-picker", source)
                 self.assertIn(".theme-menu", source)
                 self.assertIn("flex: 0 0 34px", source)
-                self.assertIn('url("/sand-waves-v2.webp?v=1")', source)
+                self.assertIn('url("/sand-waves-v2.webp?v=2")', source)
                 self.assertIn("max(100vw, 1200px) auto", source)
                 self.assertIn(':root[data-theme="sand"] .brand-title', source)
                 self.assertIn(':root[data-theme="sand"] .account-action', source)
+                self.assertIn(':root[data-theme="sand"] .topbar::before', source)
+                self.assertIn("width: 100vw", source)
                 self.assertIn('calc(32% - 1px)', source)
                 self.assertIn('calc(50% - 1px)', source)
                 self.assertIn('calc(68% - 1px)', source)
@@ -90,6 +92,7 @@ class ThemeUiTests(unittest.TestCase):
                     self.assertIn(declaration, source)
 
         admin_source = THEME_STYLES[1].read_text(encoding="utf-8")
+        self.assertIn("margin: 0;", admin_source)
         self.assertIn("--disabled-card-opacity: 0.76;", admin_source)
         self.assertIn("opacity: var(--disabled-card-opacity);", admin_source)
 
