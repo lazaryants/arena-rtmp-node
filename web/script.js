@@ -481,9 +481,24 @@ async function refreshNavigationAccess() {
         const role = payload.authenticated ? payload.role : null;
         const legacyMode = payload.rbac_enabled === false;
         const signInLink = document.getElementById('signInNavLink');
+        const accountIdentity = document.getElementById('accountIdentity');
+        const logoutForm = document.getElementById('accountLogoutForm');
+        const csrfInput = document.getElementById('accountCsrfToken');
 
         if (signInLink) {
             signInLink.hidden = legacyMode || payload.authenticated;
+        }
+        if (accountIdentity) {
+            accountIdentity.hidden = !(legacyMode || payload.authenticated);
+            accountIdentity.textContent = legacyMode
+                ? 'Local admin'
+                : `${payload.username} · ${payload.role}`;
+        }
+        if (logoutForm) {
+            logoutForm.hidden = legacyMode || !payload.authenticated;
+        }
+        if (csrfInput) {
+            csrfInput.value = payload.csrf_token || '';
         }
 
         document.querySelectorAll('[data-minimum-role]').forEach(link => {
