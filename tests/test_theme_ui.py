@@ -24,9 +24,9 @@ class ThemeUiTests(unittest.TestCase):
         for path in THEMED_PAGES:
             with self.subTest(path=path):
                 source = path.read_text(encoding="utf-8")
-                self.assertIn("theme.js?v=1", source)
+                self.assertIn("theme.js?v=2", source)
                 self.assertLess(
-                    source.index("theme.js?v=1"),
+                    source.index("theme.js?v=2"),
                     source.index("<style") if "<style" in source else source.index("style.css"),
                 )
 
@@ -40,20 +40,34 @@ class ThemeUiTests(unittest.TestCase):
         self.assertIn("document.documentElement.dataset.theme", source)
         self.assertIn("window.addEventListener('storage'", source)
 
-    def test_toggle_uses_reserved_account_slot(self):
+    def test_existing_light_preference_is_migrated_to_ice(self):
+        source = THEME_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn("value === 'light'", source)
+        self.assertIn("return 'ice'", source)
+
+    def test_picker_uses_reserved_account_slot(self):
         source = THEME_SCRIPT.read_text(encoding="utf-8")
 
         self.assertIn("querySelector('.account-slot')", source)
-        self.assertIn("accountSlot.prepend(button)", source)
-        self.assertIn("data-theme-toggle", source)
+        self.assertIn("accountSlot.prepend(wrapper)", source)
+        self.assertIn("data-theme-picker", source)
+        self.assertIn("data-theme-option", source)
+        self.assertIn("Dark", source)
+        self.assertIn("Ice", source)
+        self.assertIn("Sand", source)
 
-    def test_both_stylesheets_define_light_palette_and_fixed_toggle(self):
+    def test_stylesheets_define_ice_sand_and_fixed_picker(self):
         for path in THEME_STYLES:
             with self.subTest(path=path):
                 source = path.read_text(encoding="utf-8")
-                self.assertIn(':root[data-theme="light"]', source)
-                self.assertIn(".theme-toggle", source)
+                self.assertIn(':root[data-theme="ice"]', source)
+                self.assertIn(':root[data-theme="sand"]', source)
+                self.assertIn(".theme-picker", source)
+                self.assertIn(".theme-menu", source)
                 self.assertIn("flex: 0 0 34px", source)
+                self.assertIn("9px 9px", source)
+                self.assertIn("13px 13px", source)
 
 
 if __name__ == "__main__":
