@@ -8,6 +8,34 @@ const PLAYER_RETRY_MAX_MS = 15000;
 const PLAYER_STALL_TIMEOUT_MS = 15000;
 
 const MONITOR_LAYOUT_KEY = 'arena-monitor-columns';
+const MONITOR_DETAILS_KEY = 'arena-monitor-details-visible';
+
+function setMonitorDetailsVisible(visible) {
+    const grid = document.getElementById('streamsGrid');
+    const button = document.getElementById('detailsToggle');
+    if (!grid || !button) return;
+
+    grid.classList.toggle('details-hidden', !visible);
+    button.setAttribute('aria-pressed', String(!visible));
+    button.textContent = visible ? 'Hide details' : 'Show details';
+    localStorage.setItem(MONITOR_DETAILS_KEY, String(visible));
+}
+
+function setupMonitorDetails() {
+    const button = document.getElementById('detailsToggle');
+    if (!button) return;
+
+    const storedValue = localStorage.getItem(MONITOR_DETAILS_KEY);
+    const visible = storedValue === null ? true : storedValue !== 'false';
+    setMonitorDetailsVisible(visible);
+
+    button.addEventListener('click', () => {
+        setMonitorDetailsVisible(
+            !document.getElementById('streamsGrid')
+                .classList.contains('details-hidden')
+        );
+    });
+}
 
 function setMonitorColumns(value) {
     const columns = ['2', '3', '4'].includes(String(value))
@@ -597,6 +625,7 @@ function renderStreams() {
 }
 
 setupMonitorLayout();
+setupMonitorDetails();
 refreshNavigationAccess();
 loadStreams();
 setInterval(refreshNodeMetrics, 5000);
