@@ -399,6 +399,8 @@ def api_audit():
             actor=request.args.get("actor"),
             action=request.args.get("action"),
             outcome=request.args.get("outcome"),
+            since=request.args.get("since"),
+            until=request.args.get("until"),
         )
     except (OSError, ValueError, TypeError):
         return jsonify({
