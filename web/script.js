@@ -6,6 +6,101 @@ const streamPlayers = new Map();
 const PLAYER_RETRY_MIN_MS = 1000;
 const PLAYER_RETRY_MAX_MS = 15000;
 const PLAYER_STALL_TIMEOUT_MS = 15000;
+const MOBILE_PLAYBACK_QUERY = '(max-width: 760px), (pointer: coarse)';
+const MOBILE_MAX_ACTIVE_PLAYERS = 2;
+const MOBILE_ROTATION_INTERVAL_MS = 10000;
+const CONSERVE_MOBILE_PLAYBACK = (
+    window.matchMedia(MOBILE_PLAYBACK_QUERY).matches
+    && 'IntersectionObserver' in window
+);
+const mobilePlayerVisibility = new Map();
+let mobileRotationIndex = 0;
+let mobileRotationTimer = null;
+
+function mobilePlaybackCandidates() {
+    return [...mobilePlayerVisibility.entries()]
+        .filter(([, state]) => state.ratio >= 0.1 && state.serverActive)
+        .sort((left, right) => Number(left[0]) - Number(right[0]));
+}
+
+function rebalanceMobilePlayback() {
+    const candidates = mobilePlaybackCandidates();
+    const allowed = new Set();
+
+    if (candidates.length) {
+        mobileRotationIndex %= candidates.length;
+        for (
+            let offset = 0;
+            offset < Math.min(MOBILE_MAX_ACTIVE_PLAYERS, candidates.length);
+            offset += 1
+        ) {
+            allowed.add(
+                candidates[
+                    (mobileRotationIndex + offset) % candidates.length
+                ][0]
+            );
+        }
+    }
+
+    mobilePlayerVisibility.forEach((state, playerId) => {
+        state.setAllowed(allowed.has(playerId));
+    });
+}
+
+function advanceMobilePlayback() {
+    const candidates = mobilePlaybackCandidates();
+    if (candidates.length > MOBILE_MAX_ACTIVE_PLAYERS) {
+        mobileRotationIndex = (
+            mobileRotationIndex + MOBILE_MAX_ACTIVE_PLAYERS
+        ) % candidates.length;
+    } else {
+        mobileRotationIndex = 0;
+    }
+    rebalanceMobilePlayback();
+}
+
+function ensureMobileRotationTimer() {
+    if (mobileRotationTimer !== null) return;
+    mobileRotationTimer = window.setInterval(
+        advanceMobilePlayback,
+        MOBILE_ROTATION_INTERVAL_MS,
+    );
+}
+
+function updateMobilePlayerVisibility(playerId, ratio, setAllowed) {
+    const previous = mobilePlayerVisibility.get(playerId);
+    mobilePlayerVisibility.set(playerId, {
+        ratio,
+        setAllowed,
+        serverActive: previous?.serverActive || false,
+    });
+    ensureMobileRotationTimer();
+}
+
+function updateMobilePlayerServerState(playerId, serverActive) {
+    const state = mobilePlayerVisibility.get(playerId);
+    if (!state) return;
+    state.serverActive = serverActive;
+    rebalanceMobilePlayback();
+}
+
+function prioritizeMobilePlayer(playerId) {
+    const candidates = mobilePlaybackCandidates();
+    const selectedIndex = candidates.findIndex(([id]) => id === playerId);
+    if (selectedIndex < 0) return;
+    mobileRotationIndex = selectedIndex;
+    rebalanceMobilePlayback();
+}
+
+function removeMobilePlayer(playerId) {
+    mobilePlayerVisibility.delete(playerId);
+    if (!mobilePlayerVisibility.size && mobileRotationTimer !== null) {
+        window.clearInterval(mobileRotationTimer);
+        mobileRotationTimer = null;
+        mobileRotationIndex = 0;
+    }
+    rebalanceMobilePlayback();
+}
 
 const MONITOR_LAYOUT_KEY = 'arena-monitor-columns';
 const MONITOR_DETAILS_KEY = 'arena-monitor-details-visible';
@@ -305,6 +400,10 @@ function createStreamPlayer(stream) {
     let lastPlaybackTime = null;
     let lastProgressAt = Date.now();
     let destroyed = false;
+    let playbackAllowed = !CONSERVE_MOBILE_PLAYBACK;
+    let viewportObserver = null;
+    let lastPreviewCaptureAt = 0;
+    const previewCanvas = document.createElement('canvas');
 
     function clearRetry() {
         if (retryTimer !== null) {
@@ -314,7 +413,7 @@ function createStreamPlayer(stream) {
     }
 
     function scheduleRecovery(reason) {
-        if (destroyed || retryTimer !== null) return;
+        if (destroyed || !playbackAllowed || retryTimer !== null) return;
 
         const delay = retryDelay;
         retryDelay = Math.min(retryDelay * 2, PLAYER_RETRY_MAX_MS);
@@ -332,6 +431,7 @@ function createStreamPlayer(stream) {
         retryDelay = PLAYER_RETRY_MIN_MS;
         lastPlaybackTime = video.currentTime;
         lastProgressAt = Date.now();
+        capturePreviewFrame();
     }
 
     function attachHlsJs() {
@@ -376,10 +476,40 @@ function createStreamPlayer(stream) {
         video.play().catch(() => {});
     }
 
-    function rebuild() {
-        if (destroyed) return;
-        clearRetry();
+    function capturePreviewFrame() {
+        if (
+            !CONSERVE_MOBILE_PLAYBACK
+            || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+            || !video.videoWidth
+            || Date.now() - lastPreviewCaptureAt < 2000
+        ) {
+            return;
+        }
 
+        const previewWidth = Math.min(video.videoWidth, 640);
+        const previewHeight = Math.max(
+            1,
+            Math.round(previewWidth * video.videoHeight / video.videoWidth),
+        );
+        previewCanvas.width = previewWidth;
+        previewCanvas.height = previewHeight;
+
+        try {
+            const context = previewCanvas.getContext('2d');
+            context.drawImage(video, 0, 0, previewWidth, previewHeight);
+            video.poster = previewCanvas.toDataURL('image/jpeg', 0.72);
+            video.parentElement.dataset.previewLabel = 'Tap to refresh';
+            lastPreviewCaptureAt = Date.now();
+        } catch (error) {
+            console.warn(
+                `Player ${stream.prefix}: preview capture failed`,
+                error,
+            );
+        }
+    }
+
+    function releaseMedia() {
+        capturePreviewFrame();
         if (hls) {
             hls.destroy();
             hls = null;
@@ -390,11 +520,35 @@ function createStreamPlayer(stream) {
         video.load();
         lastPlaybackTime = null;
         lastProgressAt = Date.now();
+    }
+
+    function rebuild() {
+        if (destroyed || !playbackAllowed) return;
+        clearRetry();
+        releaseMedia();
 
         if (typeof Hls !== 'undefined' && Hls.isSupported()) {
             attachHlsJs();
         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
             attachNativeHls();
+        }
+    }
+
+    function setPlaybackAllowed(allowed) {
+        if (destroyed || playbackAllowed === allowed) return;
+        playbackAllowed = allowed;
+        video.controls = allowed;
+        video.parentElement.classList.toggle(
+            'mobile-preview-paused',
+            !allowed,
+        );
+
+        if (allowed) {
+            retryDelay = PLAYER_RETRY_MIN_MS;
+            rebuild();
+        } else {
+            clearRetry();
+            releaseMedia();
         }
     }
 
@@ -411,10 +565,39 @@ function createStreamPlayer(stream) {
         scheduleRecovery('video stalled');
     });
 
+    if (CONSERVE_MOBILE_PLAYBACK) {
+        updateMobilePlayerVisibility(
+            String(stream.prefix),
+            0,
+            setPlaybackAllowed,
+        );
+        viewportObserver = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                updateMobilePlayerVisibility(
+                    String(stream.prefix),
+                    entry.isIntersecting ? entry.intersectionRatio : 0,
+                    setPlaybackAllowed,
+                );
+            });
+            rebalanceMobilePlayback();
+        }, {
+            threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+        });
+        viewportObserver.observe(video);
+        video.parentElement.dataset.previewLabel = 'Waiting for preview';
+        video.parentElement.classList.add('mobile-preview-paused');
+        video.controls = false;
+        video.parentElement.addEventListener('click', () => {
+            if (!playbackAllowed) {
+                prioritizeMobilePlayer(String(stream.prefix));
+            }
+        });
+    }
+
     watchdogTimer = setInterval(() => {
         updateTechInfo(stream, hls, video);
 
-        if (serverState !== 'active') return;
+        if (!playbackAllowed || serverState !== 'active') return;
 
         const playbackStalled = (
             video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
@@ -436,6 +619,12 @@ function createStreamPlayer(stream) {
                 && serverState !== 'active'
             );
             serverState = nextState;
+            if (CONSERVE_MOBILE_PLAYBACK) {
+                updateMobilePlayerServerState(
+                    String(stream.prefix),
+                    nextState === 'active',
+                );
+            }
             if (becameActive) {
                 clearRetry();
                 retryDelay = PLAYER_RETRY_MIN_MS;
@@ -446,7 +635,11 @@ function createStreamPlayer(stream) {
             destroyed = true;
             clearRetry();
             if (watchdogTimer !== null) clearInterval(watchdogTimer);
-            if (hls) hls.destroy();
+            if (viewportObserver) viewportObserver.disconnect();
+            if (CONSERVE_MOBILE_PLAYBACK) {
+                removeMobilePlayer(String(stream.prefix));
+            }
+            releaseMedia();
         }
     };
 }
@@ -600,7 +793,7 @@ function renderStreams() {
                 </div>
                 <div class="status offline" id="${stream.statusId}">Offline</div>
             </div>
-            <div class="video-container"><video id="${stream.id}" controls autoplay muted></video></div>
+            <div class="video-container"><video id="${stream.id}" controls autoplay muted playsinline></video></div>
 
             <div class="stream-details">
                 <div class="detail-panel">
