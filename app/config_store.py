@@ -12,7 +12,8 @@ from urllib.parse import urlparse
 
 FIELD_ID_RE = re.compile(r"(?:[1-9]|1[0-6])\Z")
 STREAM_KEY_RE = re.compile(r"[A-Za-z0-9._-]{1,128}\Z")
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
+AUDIO_MODES = {"source", "silent", "none"}
 ALLOWED_FIELD_KEYS = {
     "emoji",
     "enabled",
@@ -93,10 +94,18 @@ def validate_field(field_id, field):
     if len(destinations) > 32:
         raise ConfigValidationError(f"field {field_id}.restream_urls has too many entries")
     for index, destination in enumerate(destinations):
-        validate_rtmp_url(
-            destination,
-            f"field {field_id}.restream_urls[{index}]",
-        )
+        label = f"field {field_id}.restream_urls[{index}]"
+        if not isinstance(destination, dict):
+            raise ConfigValidationError(f"{label} must be an object")
+        if set(destination) != {"url", "audio_mode"}:
+            raise ConfigValidationError(
+                f"{label} must contain only url and audio_mode"
+            )
+        validate_rtmp_url(destination["url"], f"{label}.url")
+        if destination["audio_mode"] not in AUDIO_MODES:
+            raise ConfigValidationError(
+                f"{label}.audio_mode must be one of {sorted(AUDIO_MODES)}"
+            )
 
 
 def validate_config(config):

@@ -268,7 +268,10 @@ class AccessControlTests(unittest.TestCase):
                 return_value={
                     1: {
                         "name": "Field 1",
-                        "urls": [secret_url],
+                        "urls": [{
+                            "url": secret_url,
+                            "audio_mode": "silent",
+                        }],
                     },
                 },
             ),
@@ -281,6 +284,10 @@ class AccessControlTests(unittest.TestCase):
         self.assertNotIn(secret_url, response.get_data(as_text=True))
         self.assertIn(
             "Configured destination",
+            response.get_data(as_text=True),
+        )
+        self.assertIn(
+            "Silent AAC",
             response.get_data(as_text=True),
         )
 

@@ -61,6 +61,51 @@ class RestreamSupervisor:
             f"place{field_id}/{stream_key}"
         )
 
+    def ffmpeg_command(self, source, destination, progress_file):
+        command = [
+            str(self.settings.ffmpeg_bin),
+            "-hide_banner",
+            "-loglevel", "warning",
+            "-nostats",
+            "-stats_period", "1",
+            "-progress", str(progress_file),
+            "-i", source,
+        ]
+        audio_mode = destination["audio_mode"]
+        if audio_mode == "source":
+            command.extend([
+                "-map", "0:v:0",
+                "-map", "0:a:0?",
+                "-c", "copy",
+            ])
+        elif audio_mode == "silent":
+            command.extend([
+                "-f", "lavfi",
+                "-i", "anullsrc=channel_layout=stereo:sample_rate=48000",
+                "-map", "0:v:0",
+                "-map", "1:a:0",
+                "-c:v", "copy",
+                "-c:a", "aac",
+                "-b:a", "128k",
+                "-ar", "48000",
+                "-ac", "2",
+                "-shortest",
+            ])
+        elif audio_mode == "none":
+            command.extend([
+                "-map", "0:v:0",
+                "-c:v", "copy",
+                "-an",
+            ])
+        else:
+            raise ValueError("unsupported audio mode")
+        command.extend([
+            "-f", "flv",
+            "-flvflags", "no_duration_filesize",
+            destination["url"],
+        ])
+        return command
+
     def start(self, field_id, url_index=None):
         with self.lock:
             self.settings.ensure_runtime_directories()
@@ -99,21 +144,16 @@ class RestreamSupervisor:
                     )
                     log_handle.write(f"Source: {source}\n")
                     log_handle.write("Destination: [configured]\n")
+                    log_handle.write(
+                        f"Audio mode: {destinations[index]['audio_mode']}\n"
+                    )
                     log_handle.flush()
                     process = subprocess.Popen(
-                        [
-                            str(self.settings.ffmpeg_bin),
-                            "-hide_banner",
-                            "-loglevel", "warning",
-                            "-nostats",
-                            "-stats_period", "1",
-                            "-progress", str(progress_file),
-                            "-i", source,
-                            "-c", "copy",
-                            "-f", "flv",
-                            "-flvflags", "no_duration_filesize",
+                        self.ffmpeg_command(
+                            source,
                             destinations[index],
-                        ],
+                            progress_file,
+                        ),
                         stdout=log_handle,
                         stderr=log_handle,
                         stdin=subprocess.DEVNULL,

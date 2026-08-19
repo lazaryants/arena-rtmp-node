@@ -66,6 +66,46 @@ class SupervisorValidationTests(unittest.TestCase):
             "rtmp://127.0.0.1/place6/court-six",
         )
 
+    def test_ffmpeg_audio_modes_copy_video_without_transcoding(self):
+        settings = mock.Mock(
+            ffmpeg_bin=Path("/usr/bin/ffmpeg"),
+            local_rtmp_origin="rtmp://127.0.0.1",
+        )
+        supervisor = RestreamSupervisor(settings)
+        progress = Path("/run/restream.progress")
+        source = "rtmp://127.0.0.1/place1/stream1"
+        destination_url = "rtmps://destination.example/live/private"
+
+        source_command = supervisor.ffmpeg_command(
+            source,
+            {"url": destination_url, "audio_mode": "source"},
+            progress,
+        )
+        self.assertIn("-c", source_command)
+        self.assertIn("copy", source_command)
+        self.assertIn("0:a:0?", source_command)
+
+        silent_command = supervisor.ffmpeg_command(
+            source,
+            {"url": destination_url, "audio_mode": "silent"},
+            progress,
+        )
+        self.assertIn("anullsrc=channel_layout=stereo:sample_rate=48000", silent_command)
+        self.assertIn("-c:v", silent_command)
+        self.assertIn("copy", silent_command)
+        self.assertIn("-c:a", silent_command)
+        self.assertIn("aac", silent_command)
+        self.assertIn("-shortest", silent_command)
+
+        no_audio_command = supervisor.ffmpeg_command(
+            source,
+            {"url": destination_url, "audio_mode": "none"},
+            progress,
+        )
+        self.assertIn("-an", no_audio_command)
+        self.assertIn("-c:v", no_audio_command)
+        self.assertIn("copy", no_audio_command)
+
     def test_rejects_invalid_requests_before_dispatch(self):
         for request in (
             {"action": "shell", "field_id": 1},

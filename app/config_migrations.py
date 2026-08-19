@@ -44,6 +44,27 @@ def schema_version(config):
     return version
 
 
+def validate_v1_field(field_id, field):
+    """Validate the string destination format used by schema v1."""
+    normalized = copy.deepcopy(field)
+    destinations = normalized.get("restream_urls", [])
+    if not isinstance(destinations, list):
+        raise ConfigMigrationError(
+            f"field {field_id}.restream_urls must be a list"
+        )
+    if len(destinations) > 32:
+        raise ConfigMigrationError(
+            f"field {field_id}.restream_urls has too many entries"
+        )
+    normalized["restream_urls"] = []
+    validate_field(field_id, normalized)
+    for index, destination in enumerate(destinations):
+        validate_rtmp_url(
+            destination,
+            f"field {field_id}.restream_urls[{index}]",
+        )
+
+
 def validate_legacy_v0(config):
     allowed_root_keys = {"fields"} if "schema_version" not in config else {
         "schema_version",
@@ -73,7 +94,7 @@ def validate_legacy_v0(config):
             if key not in {"hls_url", "restream_url", "rtmp_url"}
         }
         try:
-            validate_field(field_id, normalized)
+            validate_v1_field(field_id, normalized)
             if "restream_url" in field:
                 validate_rtmp_url(
                     field["restream_url"],
@@ -99,8 +120,39 @@ def migrate_v0_to_v1(config):
     return migrated
 
 
+def migrate_v1_to_v2(config):
+    if (
+        not isinstance(config, dict)
+        or set(config) != {"schema_version", "fields"}
+        or config.get("schema_version") != 1
+    ):
+        raise ConfigMigrationError(
+            "schema v1 configuration must contain only schema_version=1 and fields"
+        )
+    fields = config.get("fields")
+    if not isinstance(fields, dict) or len(fields) > 16:
+        raise ConfigMigrationError(
+            "schema v1 fields must contain no more than 16 entries"
+        )
+
+    migrated = copy.deepcopy(config)
+    for field_id, field in migrated["fields"].items():
+        if not isinstance(field_id, str) or not FIELD_ID_RE.fullmatch(field_id):
+            raise ConfigMigrationError(f"invalid field ID: {field_id!r}")
+        if not isinstance(field, dict):
+            raise ConfigMigrationError(f"field {field_id} must be an object")
+        validate_v1_field(field_id, field)
+        field["restream_urls"] = [
+            {"url": url, "audio_mode": "source"}
+            for url in field.get("restream_urls", [])
+        ]
+    migrated["schema_version"] = 2
+    return migrated
+
+
 MIGRATIONS = {
     0: migrate_v0_to_v1,
+    1: migrate_v1_to_v2,
 }
 
 

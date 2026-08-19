@@ -8,7 +8,7 @@ from app.config_store import ConfigStore, ConfigValidationError, validate_config
 
 def valid_config():
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "fields": {
             "1": {
                 "name": "Place 1",
@@ -17,9 +17,10 @@ def valid_config():
                 "stream_key": "stream1",
                 "key": "publish-key",
                 "publish_auth_enabled": True,
-                "restream_urls": [
-                    "rtmps://destination.example/live/private-token",
-                ],
+                "restream_urls": [{
+                    "url": "rtmps://destination.example/live/private-token",
+                    "audio_mode": "source",
+                }],
             },
         },
     }
@@ -47,13 +48,22 @@ class ConfigStoreTests(unittest.TestCase):
         self.store.save(valid_config())
         original = self.path.read_bytes()
         invalid = valid_config()
-        invalid["fields"]["1"]["restream_urls"] = ["https://not-rtmp.example"]
+        invalid["fields"]["1"]["restream_urls"] = [{
+            "url": "https://not-rtmp.example",
+            "audio_mode": "source",
+        }]
 
         with self.assertRaises(ConfigValidationError):
             self.store.save(invalid)
 
         self.assertEqual(self.path.read_bytes(), original)
         self.assertEqual(self.store.load(), valid_config())
+
+    def test_rejects_unsupported_destination_audio_mode(self):
+        config = valid_config()
+        config["fields"]["1"]["restream_urls"][0]["audio_mode"] = "surround"
+        with self.assertRaisesRegex(ConfigValidationError, "audio_mode"):
+            validate_config(config)
 
     def test_publish_auth_requires_key(self):
         config = valid_config()
@@ -74,7 +84,7 @@ class ConfigStoreTests(unittest.TestCase):
             validate_config(config)
 
         config = valid_config()
-        config["schema_version"] = 2
+        config["schema_version"] = 3
         with self.assertRaisesRegex(ConfigValidationError, "unsupported schema_version"):
             validate_config(config)
 

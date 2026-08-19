@@ -30,28 +30,58 @@ def legacy_config():
 
 
 class ConfigMigrationTests(unittest.TestCase):
-    def test_v0_to_v1_preserves_keys_and_destinations(self):
+    def test_v0_to_current_preserves_keys_and_destinations(self):
         original = legacy_config()
         unchanged = copy.deepcopy(original)
         migrated, original_version = migrate_config(original)
 
         self.assertEqual(original_version, 0)
         self.assertEqual(original, unchanged)
-        self.assertEqual(migrated["schema_version"], 1)
+        self.assertEqual(migrated["schema_version"], 2)
         field = migrated["fields"]["3"]
         self.assertEqual(field["key"], "publish-secret")
         self.assertEqual(field["restream_urls"], [
-            "rtmp://two.example/live/private-two",
-            "rtmps://one.example/live/private-one",
+            {
+                "url": "rtmp://two.example/live/private-two",
+                "audio_mode": "source",
+            },
+            {
+                "url": "rtmps://one.example/live/private-one",
+                "audio_mode": "source",
+            },
         ])
         self.assertFalse(field["publish_auth_enabled"])
         self.assertNotIn("restream_url", field)
         self.assertNotIn("rtmp_url", field)
         self.assertNotIn("hls_url", field)
 
+    def test_v1_to_v2_preserves_destinations_with_source_audio(self):
+        config = {
+            "schema_version": 1,
+            "fields": {
+                "1": {
+                    "name": "Place 1",
+                    "enabled": True,
+                    "stream_key": "stream1",
+                    "key": "secret",
+                    "publish_auth_enabled": True,
+                    "restream_urls": [
+                        "rtmp://destination.example/live/private",
+                    ],
+                },
+            },
+        }
+        migrated, original_version = migrate_config(config)
+        self.assertEqual(original_version, 1)
+        self.assertEqual(migrated["schema_version"], 2)
+        self.assertEqual(migrated["fields"]["1"]["restream_urls"], [{
+            "url": "rtmp://destination.example/live/private",
+            "audio_mode": "source",
+        }])
+
     def test_rejects_future_or_invalid_legacy_config(self):
         with self.assertRaisesRegex(ConfigMigrationError, "newer"):
-            migrate_config({"schema_version": 2, "fields": {}})
+            migrate_config({"schema_version": 3, "fields": {}})
 
         config = legacy_config()
         config["fields"]["3"]["restream_url"] = "https://invalid.example"
@@ -82,7 +112,7 @@ class ConfigMigrationTests(unittest.TestCase):
             self.assertEqual(len(backups), 1)
             self.assertEqual(backups[0].read_bytes(), original)
             self.assertEqual(backups[0].stat().st_mode & 0o777, 0o600)
-            self.assertEqual(json.loads(path.read_text())["schema_version"], 1)
+            self.assertEqual(json.loads(path.read_text())["schema_version"], 2)
             self.assertEqual((path.stat().st_uid, path.stat().st_gid), original_owner)
             self.assertEqual(path.stat().st_mode & 0o777, 0o600)
             self.assertNotIn("publish-secret", apply.stdout + apply.stderr)

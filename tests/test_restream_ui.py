@@ -28,6 +28,16 @@ class RestreamUiTests(unittest.TestCase):
         self.assertIn('id="toastRegion"', self.template)
         self.assertIn("refreshFieldCard(fieldId)", self.template)
 
+    def test_destination_audio_modes_are_available(self):
+        self.assertIn('id="dialogAudioMode"', self.template)
+        self.assertIn('value="source"', self.template)
+        self.assertIn('value="silent"', self.template)
+        self.assertIn('value="none"', self.template)
+        self.assertIn("Source audio", self.template)
+        self.assertIn("Silent AAC", self.template)
+        self.assertIn("No audio track", self.template)
+        self.assertIn("audio_mode: audioMode", self.template)
+
     def test_destination_url_validation_accepts_only_rtmp_schemes(self):
         self.assertIn("rtmps?:", self.template)
         self.assertIn(

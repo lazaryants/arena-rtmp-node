@@ -103,8 +103,15 @@ class UpdateScriptTests(unittest.TestCase):
         )
         self.assertEqual(apply.returncode, 0, apply.stderr)
         migrated = json.loads(self.config.read_text(encoding="utf-8"))
-        self.assertEqual(migrated["schema_version"], 1)
+        self.assertEqual(migrated["schema_version"], 2)
         self.assertEqual(migrated["fields"]["3"]["key"], "publish-secret")
+        self.assertEqual(
+            migrated["fields"]["3"]["restream_urls"],
+            [{
+                "url": "rtmps://destination.example/live/private",
+                "audio_mode": "source",
+            }],
+        )
         self.assertEqual(
             self.node_env.read_text(encoding="utf-8"),
             "ARENA_RTMP_PUBLIC_HOST=private.example\n",
