@@ -6,6 +6,11 @@ const streamPlayers = new Map();
 const PLAYER_RETRY_MIN_MS = 1000;
 const PLAYER_RETRY_MAX_MS = 15000;
 const PLAYER_STALL_TIMEOUT_MS = 15000;
+const MOBILE_PLAYBACK_QUERY = '(max-width: 760px), (pointer: coarse)';
+const CONSERVE_MOBILE_PLAYBACK = (
+    window.matchMedia(MOBILE_PLAYBACK_QUERY).matches
+    && 'IntersectionObserver' in window
+);
 
 const MONITOR_LAYOUT_KEY = 'arena-monitor-columns';
 const MONITOR_DETAILS_KEY = 'arena-monitor-details-visible';
@@ -305,6 +310,8 @@ function createStreamPlayer(stream) {
     let lastPlaybackTime = null;
     let lastProgressAt = Date.now();
     let destroyed = false;
+    let playbackAllowed = !CONSERVE_MOBILE_PLAYBACK;
+    let viewportObserver = null;
 
     function clearRetry() {
         if (retryTimer !== null) {
@@ -314,7 +321,7 @@ function createStreamPlayer(stream) {
     }
 
     function scheduleRecovery(reason) {
-        if (destroyed || retryTimer !== null) return;
+        if (destroyed || !playbackAllowed || retryTimer !== null) return;
 
         const delay = retryDelay;
         retryDelay = Math.min(retryDelay * 2, PLAYER_RETRY_MAX_MS);
@@ -376,10 +383,7 @@ function createStreamPlayer(stream) {
         video.play().catch(() => {});
     }
 
-    function rebuild() {
-        if (destroyed) return;
-        clearRetry();
-
+    function releaseMedia() {
         if (hls) {
             hls.destroy();
             hls = null;
@@ -390,11 +394,30 @@ function createStreamPlayer(stream) {
         video.load();
         lastPlaybackTime = null;
         lastProgressAt = Date.now();
+    }
+
+    function rebuild() {
+        if (destroyed || !playbackAllowed) return;
+        clearRetry();
+        releaseMedia();
 
         if (typeof Hls !== 'undefined' && Hls.isSupported()) {
             attachHlsJs();
         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
             attachNativeHls();
+        }
+    }
+
+    function setPlaybackAllowed(allowed) {
+        if (destroyed || playbackAllowed === allowed) return;
+        playbackAllowed = allowed;
+
+        if (allowed) {
+            retryDelay = PLAYER_RETRY_MIN_MS;
+            rebuild();
+        } else {
+            clearRetry();
+            releaseMedia();
         }
     }
 
@@ -411,10 +434,22 @@ function createStreamPlayer(stream) {
         scheduleRecovery('video stalled');
     });
 
+    if (CONSERVE_MOBILE_PLAYBACK) {
+        viewportObserver = new IntersectionObserver(entries => {
+            const visible = entries.some(entry => (
+                entry.isIntersecting && entry.intersectionRatio >= 0.25
+            ));
+            setPlaybackAllowed(visible);
+        }, {
+            threshold: [0, 0.25],
+        });
+        viewportObserver.observe(video);
+    }
+
     watchdogTimer = setInterval(() => {
         updateTechInfo(stream, hls, video);
 
-        if (serverState !== 'active') return;
+        if (!playbackAllowed || serverState !== 'active') return;
 
         const playbackStalled = (
             video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
@@ -446,7 +481,8 @@ function createStreamPlayer(stream) {
             destroyed = true;
             clearRetry();
             if (watchdogTimer !== null) clearInterval(watchdogTimer);
-            if (hls) hls.destroy();
+            if (viewportObserver) viewportObserver.disconnect();
+            releaseMedia();
         }
     };
 }

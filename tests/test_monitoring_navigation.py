@@ -37,6 +37,23 @@ class MonitoringNavigationTests(unittest.TestCase):
         self.assertIn("details-hidden", script)
         self.assertIn(".grid.details-hidden .stream-details", styles)
 
+    def test_mobile_players_only_run_inside_the_viewport(self):
+        html = (PROJECT_ROOT / "web/index.html").read_text(
+            encoding="utf-8",
+        )
+        script = (PROJECT_ROOT / "web/script.js").read_text(
+            encoding="utf-8",
+        )
+
+        self.assertIn("script.js?v=8", html)
+        self.assertIn("MOBILE_PLAYBACK_QUERY", script)
+        self.assertIn("CONSERVE_MOBILE_PLAYBACK", script)
+        self.assertIn("new IntersectionObserver", script)
+        self.assertIn("entry.intersectionRatio >= 0.25", script)
+        self.assertIn("setPlaybackAllowed(visible)", script)
+        self.assertIn("viewportObserver.disconnect()", script)
+        self.assertIn("releaseMedia()", script)
+
     def test_navigation_uses_safe_session_metadata(self):
         script = (PROJECT_ROOT / "web/script.js").read_text(
             encoding="utf-8",
