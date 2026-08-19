@@ -5,6 +5,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 THEME_SCRIPT = PROJECT_ROOT / "web/theme.js"
 SAND_TEXTURE = PROJECT_ROOT / "web/sand-texture.svg"
+SAND_BACKGROUND = PROJECT_ROOT / "web/sand-waves-v2.webp"
 THEME_STYLES = (
     PROJECT_ROOT / "web/style.css",
     PROJECT_ROOT / "app/templates/theme.css",
@@ -67,8 +68,10 @@ class ThemeUiTests(unittest.TestCase):
                 self.assertIn(".theme-picker", source)
                 self.assertIn(".theme-menu", source)
                 self.assertIn("flex: 0 0 34px", source)
-                self.assertIn('url("/sand-texture.svg?v=3")', source)
-                self.assertIn("320px 240px", source)
+                self.assertIn('url("/sand-waves-v2.webp?v=1")', source)
+                self.assertIn("max(100vw, 1200px) auto", source)
+                self.assertIn(':root[data-theme="sand"] .brand-title', source)
+                self.assertIn(':root[data-theme="sand"] .account-action', source)
                 self.assertIn('calc(32% - 1px)', source)
                 self.assertIn('calc(50% - 1px)', source)
                 self.assertIn('calc(68% - 1px)', source)
@@ -97,6 +100,14 @@ class ThemeUiTests(unittest.TestCase):
         self.assertNotIn("<path", source)
         self.assertIn('fill="#6f604d"', source)
         self.assertIn('fill="#fffdf7"', source)
+
+    def test_sand_v2_background_is_local_optimized_webp(self):
+        source = SAND_BACKGROUND.read_bytes()
+
+        self.assertEqual(source[:4], b"RIFF")
+        self.assertEqual(source[8:12], b"WEBP")
+        self.assertGreater(len(source), 20_000)
+        self.assertLess(len(source), 200_000)
 
 
 

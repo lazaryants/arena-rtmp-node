@@ -99,17 +99,52 @@
 }
 
 :root[data-theme="sand"] body {
+    background-color: #e8e1d2;
     background-image:
-        url("/sand-texture.svg?v=3"),
-        linear-gradient(145deg, #eee9dc 0%, var(--background) 58%, var(--background-accent) 145%);
-    background-position: 0 0, 0 0;
-    background-size: 320px 240px, cover;
+        linear-gradient(rgba(250, 248, 240, 0.10), rgba(232, 225, 210, 0.08)),
+        url("/sand-waves-v2.webp?v=1");
+    background-position: center top, center top;
+    background-repeat: repeat-y, repeat-y;
+    background-size: max(100vw, 1200px) auto, max(100vw, 1200px) auto;
 }
 
 :root[data-theme="sand"] .topbar {
-    background: rgba(249, 246, 236, 0.92);
-    border-bottom-color: rgba(96, 78, 54, 0.38);
-    box-shadow: 0 7px 20px rgba(75, 58, 36, 0.08);
+    background: linear-gradient(135deg, #2fb5c7 0%, #22a8bb 100%);
+    border-bottom-color: rgba(8, 99, 119, 0.46);
+    box-shadow: 0 8px 22px rgba(11, 104, 124, 0.18);
+}
+
+:root[data-theme="sand"] .brand-title,
+:root[data-theme="sand"] .nav-menu a.active,
+:root[data-theme="sand"] .nav-menu a:hover,
+:root[data-theme="sand"] .account-action,
+:root[data-theme="sand"] .theme-toggle {
+    color: #ffffff;
+}
+
+:root[data-theme="sand"] .brand-subtitle,
+:root[data-theme="sand"] .nav-menu a,
+:root[data-theme="sand"] .account-identity {
+    color: rgba(255, 255, 255, 0.88);
+}
+
+:root[data-theme="sand"] .brand-mark,
+:root[data-theme="sand"] .nav-menu a.active,
+:root[data-theme="sand"] .account-action,
+:root[data-theme="sand"] .theme-toggle {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.52);
+}
+
+:root[data-theme="sand"] .nav-menu a:hover,
+:root[data-theme="sand"] .account-action:hover,
+:root[data-theme="sand"] .theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.20);
+    border-color: rgba(255, 255, 255, 0.68);
+}
+
+:root[data-theme="sand"] .account-slot {
+    border-left-color: rgba(255, 255, 255, 0.30);
 }
 
 * {
