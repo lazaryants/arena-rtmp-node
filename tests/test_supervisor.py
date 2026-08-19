@@ -95,6 +95,7 @@ class SupervisorValidationTests(unittest.TestCase):
         self.assertIn("copy", silent_command)
         self.assertIn("-c:a", silent_command)
         self.assertIn("aac", silent_command)
+        self.assertIn("-shortest", silent_command)
 
         no_audio_command = supervisor.ffmpeg_command(
             source,
