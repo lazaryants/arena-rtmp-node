@@ -481,7 +481,8 @@ def index():
             )
             delay_info = get_delay_info(log_file)
             url_statuses.append({
-                'url': url,
+                'url': url['url'],
+                'audio_mode': url['audio_mode'],
                 'index': idx,
                 'status': status,
                 'delay_info': delay_info
@@ -629,9 +630,9 @@ def api_get_restream_urls(field_id):
     
     field = config['fields'][str(field_id)]
     
-    urls = field.get('restream_urls', [])
+    destinations = field.get('restream_urls', [])
     
-    return jsonify({'success': True, 'urls': urls})
+    return jsonify({'success': True, 'destinations': destinations})
 
 
 @app.route('/api/restream-urls/<int:field_id>', methods=['POST'])
@@ -641,6 +642,7 @@ def api_add_restream_url(field_id):
     try:
         data = request.get_json()
         new_url = data.get('url', '').strip()
+        audio_mode = data.get('audio_mode', 'source')
         
         if not new_url:
             return jsonify({'success': False, 'message': 'URL is empty'}), 400
@@ -653,7 +655,10 @@ def api_add_restream_url(field_id):
         field = config['fields'][str(field_id)]
         
         field.setdefault('restream_urls', [])
-        field['restream_urls'].append(new_url)
+        field['restream_urls'].append({
+            'url': new_url,
+            'audio_mode': audio_mode,
+        })
         save_config(config)
         
         return jsonify({
@@ -673,7 +678,6 @@ def api_update_restream_url(field_id, url_index):
     """API: обновить URL для рестрима"""
     try:
         data = request.get_json()
-        new_url = data.get('url', '').strip()
         
         config = load_config()
         
@@ -686,11 +690,18 @@ def api_update_restream_url(field_id, url_index):
         if url_index >= len(field['restream_urls']):
             return jsonify({'success': False, 'message': 'Invalid URL index'}), 400
         
+        current = field['restream_urls'][url_index]
+        new_url = data.get('url', current['url']).strip()
+        audio_mode = data.get('audio_mode', current['audio_mode'])
+
         success, message = stop_restream(field_id, url_index)
         if not success:
             return jsonify({'success': False, 'message': message}), 503
         
-        field['restream_urls'][url_index] = new_url
+        field['restream_urls'][url_index] = {
+            'url': new_url,
+            'audio_mode': audio_mode,
+        }
         save_config(config)
         
         return jsonify({'success': True, 'message': 'URL updated'})
