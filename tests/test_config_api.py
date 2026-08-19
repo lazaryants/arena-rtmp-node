@@ -14,7 +14,7 @@ class ConfigApiTests(unittest.TestCase):
         self.path = Path(self.temporary_directory.name) / "restream-config.json"
         self.store = ConfigStore(self.path)
         self.store.save({
-            "schema_version": 1,
+            "schema_version": 2,
             "fields": {
                 "1": {
                     "name": "Place 1",
@@ -95,8 +95,23 @@ class ConfigApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             self.store.load()["fields"]["1"]["restream_urls"],
-            ["rtmps://destination.example/live/token"],
+            [{
+                "url": "rtmps://destination.example/live/token",
+                "audio_mode": "source",
+            }],
         )
+
+    def test_destination_audio_mode_is_persisted(self):
+        response = self.client.post(
+            "/api/restream-urls/1",
+            json={
+                "url": "rtmp://destination.example/live/token",
+                "audio_mode": "silent",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        destination = self.store.load()["fields"]["1"]["restream_urls"][0]
+        self.assertEqual(destination["audio_mode"], "silent")
 
     def test_log_tail_is_bounded_and_returns_complete_last_lines(self):
         log_path = Path(self.temporary_directory.name) / "large.log"
@@ -194,7 +209,7 @@ class ConfigApiTests(unittest.TestCase):
         mocked_status,
     ):
         self.store.save({
-            "schema_version": 1,
+            "schema_version": 2,
             "fields": {
                 "1": {
                     "name": "Place 1",
@@ -202,9 +217,10 @@ class ConfigApiTests(unittest.TestCase):
                     "stream_key": "stream1",
                     "key": "publish-key",
                     "publish_auth_enabled": True,
-                    "restream_urls": [
-                        "rtmp://destination.example/live/private-token",
-                    ],
+                    "restream_urls": [{
+                        "url": "rtmp://destination.example/live/private-token",
+                        "audio_mode": "none",
+                    }],
                 },
             },
         })
