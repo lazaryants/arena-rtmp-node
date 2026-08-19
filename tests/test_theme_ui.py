@@ -88,6 +88,11 @@ class ThemeUiTests(unittest.TestCase):
                 self.assertIn(':root[data-theme="padel"] .topbar::before', source)
                 self.assertIn(':root[data-theme="padel"] .stream-card', source)
                 self.assertIn(':root[data-theme="padel"] .user-panel', source)
+                self.assertIn(':root[data-theme="padel"] .page-heading h1', source)
+                self.assertIn('color: #f7fff9;', source)
+                self.assertIn(':root[data-theme="padel"] .page-heading p', source)
+                self.assertIn('color: #edf9f1;', source)
+                self.assertIn(':root[data-theme="padel"] .page-badge', source)
 
     def test_light_themes_define_readable_code_and_disabled_text(self):
         expected = (
