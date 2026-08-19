@@ -74,6 +74,20 @@ class ThemeUiTests(unittest.TestCase):
                 self.assertIn('calc(68% - 1px)', source)
                 self.assertIn(':root[data-theme="ice"] .topbar', source)
 
+    def test_light_themes_define_readable_code_and_disabled_text(self):
+        expected = (
+            "--code-text: #0a568d;",
+            "--code-text: #70480f;",
+            "--disabled-card-opacity: 0.76;",
+            "color: var(--code-text);",
+            "opacity: var(--disabled-card-opacity);",
+        )
+        for path in THEME_STYLES:
+            with self.subTest(path=path):
+                source = path.read_text(encoding="utf-8")
+                for declaration in expected:
+                    self.assertIn(declaration, source)
+
     def test_sand_texture_has_visible_irregular_grains(self):
         source = SAND_TEXTURE.read_text(encoding="utf-8")
 
