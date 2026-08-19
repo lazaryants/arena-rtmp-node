@@ -14,32 +14,120 @@
     --success: #43d17a;
     --warning: #ffb74d;
     --error: #ff6b6b;
+    --code-text: #cfe7ff;
+    --control-background: rgba(0, 0, 0, 0.18);
+    --disabled-card-opacity: 0.55;
     --radius: 10px;
 }
 
 
 :root[data-theme="ice"] {
     color-scheme: light;
-    --background: #eef3f6;
-    --background-accent: #dbe8ee;
-    --surface: rgba(255, 255, 255, 0.96);
-    --surface-raised: #e8f0f4;
-    --surface-soft: rgba(20, 55, 82, 0.06);
-    --border: rgba(42, 72, 96, 0.18);
-    --border-strong: rgba(31, 126, 184, 0.42);
-    --primary: #2588c9;
-    --primary-strong: #126ca7;
-    --text: #172838;
-    --text-muted: #5d7182;
+    --background: #e7f1f6;
+    --background-accent: #c8dce8;
+    --surface: rgba(250, 253, 255, 0.88);
+    --surface-raised: rgba(244, 250, 253, 0.96);
+    --surface-soft: rgba(29, 83, 125, 0.07);
+    --border: rgba(40, 84, 122, 0.20);
+    --border-strong: rgba(32, 119, 170, 0.52);
+    --primary: #2077aa;
+    --primary-strong: #145d89;
+    --text: #132b45;
+    --text-muted: #4c657c;
+    --code-text: #0a568d;
+    --control-background: rgba(29, 83, 125, 0.10);
+    --disabled-card-opacity: 0.76;
     --success: #18864a;
-    --warning: #a76000;
+    --warning: #9a5b00;
     --error: #c83e45;
 }
 
 :root[data-theme="ice"] body {
-    background:
-        radial-gradient(circle at 10% 0%, rgba(37, 136, 201, 0.13), transparent 32rem),
-        linear-gradient(145deg, #f8fafb 0%, var(--background) 55%, var(--background-accent) 145%);
+    background-color: #e7f1f6;
+    background-image:
+        linear-gradient(
+            180deg,
+            rgba(239, 248, 252, 0.72) 0,
+            rgba(239, 248, 252, 0.34) 150px,
+            rgba(239, 248, 252, 0.15) 55%,
+            rgba(239, 248, 252, 0.08) 100%
+        ),
+        url("/curling-two-sheets.webp?v=1");
+    background-attachment: fixed;
+    background-position: center top;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+:root[data-theme="ice"] .topbar {
+    background: transparent;
+    border-bottom-color: transparent;
+    box-shadow: none;
+    isolation: isolate;
+    position: relative;
+}
+
+:root[data-theme="ice"] .topbar::before {
+    background: linear-gradient(180deg, #123a62 0%, #0c2f52 68%, #164a76 100%);
+    border-bottom: 1px solid rgba(215, 247, 255, 0.58);
+    box-shadow: 0 4px 18px rgba(5, 28, 51, 0.28);
+    content: "";
+    inset: 0 auto 0 50%;
+    position: absolute;
+    transform: translateX(-50%);
+    width: 100vw;
+    z-index: -1;
+}
+
+:root[data-theme="ice"] .brand-title,
+:root[data-theme="ice"] .brand-subtitle,
+:root[data-theme="ice"] .account-identity,
+:root[data-theme="ice"] .nav-menu a,
+:root[data-theme="ice"] .account-action,
+:root[data-theme="ice"] .theme-toggle {
+    color: rgba(255, 255, 255, 0.90);
+}
+
+:root[data-theme="ice"] .brand-mark,
+:root[data-theme="ice"] .nav-menu a.active,
+:root[data-theme="ice"] .account-action,
+:root[data-theme="ice"] .theme-toggle {
+    background: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.42);
+}
+
+:root[data-theme="ice"] .nav-menu a:hover,
+:root[data-theme="ice"] .nav-menu a.active,
+:root[data-theme="ice"] .account-action:hover,
+:root[data-theme="ice"] .theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.48);
+    color: #ffffff;
+}
+
+:root[data-theme="ice"] .account-slot {
+    border-left-color: rgba(255, 255, 255, 0.28);
+}
+
+:root[data-theme="ice"] .stream-card,
+:root[data-theme="ice"] .field-card,
+:root[data-theme="ice"] .card,
+:root[data-theme="ice"] .toolbar,
+:root[data-theme="ice"] .layout-switcher,
+:root[data-theme="ice"] .panel,
+:root[data-theme="ice"] .user-panel,
+:root[data-theme="ice"] .audit-panel {
+    background: rgba(250, 253, 255, 0.88);
+    border-color: rgba(40, 84, 122, 0.20);
+    box-shadow: 0 12px 36px rgba(16, 52, 86, 0.14);
+}
+
+@media (max-width: 768px) {
+    :root[data-theme="ice"] body {
+        background-attachment: scroll;
+        background-position: center top;
+        background-size: auto 920px;
+    }
 }
 
 :root[data-theme="sand"] {
@@ -54,24 +142,76 @@
     --primary: #95651f;
     --primary-strong: #70480f;
     --text: #342b21;
-    --text-muted: #6c604f;
+    --text-muted: #5e503f;
+    --code-text: #70480f;
+    --control-background: rgba(91, 73, 48, 0.10);
+    --disabled-card-opacity: 0.76;
     --success: #397846;
     --warning: #8d590c;
     --error: #ac4139;
 }
 
 :root[data-theme="sand"] body {
+    background-color: #e8e1d2;
     background-image:
-        url("/sand-texture.svg?v=3"),
-        linear-gradient(145deg, #eee9dc 0%, var(--background) 58%, var(--background-accent) 145%);
-    background-position: 0 0, 0 0;
-    background-size: 320px 240px, cover;
+        linear-gradient(rgba(250, 248, 240, 0.10), rgba(232, 225, 210, 0.08)),
+        url("/sand-waves-v2.webp?v=2");
+    background-position: center top, center top;
+    background-repeat: repeat-y, repeat-y;
+    background-size: max(100vw, 1200px) auto, max(100vw, 1200px) auto;
 }
 
 :root[data-theme="sand"] .topbar {
-    background: rgba(249, 246, 236, 0.92);
-    border-bottom-color: rgba(96, 78, 54, 0.38);
-    box-shadow: 0 7px 20px rgba(75, 58, 36, 0.08);
+    background: transparent;
+    border-bottom-color: transparent;
+    box-shadow: none;
+    isolation: isolate;
+    position: relative;
+}
+
+:root[data-theme="sand"] .topbar::before {
+    background: linear-gradient(135deg, #2fb5c7 0%, #22a8bb 100%);
+    border-bottom: 1px solid rgba(8, 99, 119, 0.46);
+    box-shadow: 0 8px 22px rgba(11, 104, 124, 0.18);
+    content: "";
+    inset: 0 auto 0 50%;
+    position: absolute;
+    transform: translateX(-50%);
+    width: 100vw;
+    z-index: -1;
+}
+
+:root[data-theme="sand"] .brand-title,
+:root[data-theme="sand"] .nav-menu a.active,
+:root[data-theme="sand"] .nav-menu a:hover,
+:root[data-theme="sand"] .account-action,
+:root[data-theme="sand"] .theme-toggle {
+    color: #ffffff;
+}
+
+:root[data-theme="sand"] .brand-subtitle,
+:root[data-theme="sand"] .nav-menu a,
+:root[data-theme="sand"] .account-identity {
+    color: rgba(255, 255, 255, 0.88);
+}
+
+:root[data-theme="sand"] .brand-mark,
+:root[data-theme="sand"] .nav-menu a.active,
+:root[data-theme="sand"] .account-action,
+:root[data-theme="sand"] .theme-toggle {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.52);
+}
+
+:root[data-theme="sand"] .nav-menu a:hover,
+:root[data-theme="sand"] .account-action:hover,
+:root[data-theme="sand"] .theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.20);
+    border-color: rgba(255, 255, 255, 0.68);
+}
+
+:root[data-theme="sand"] .account-slot {
+    border-left-color: rgba(255, 255, 255, 0.30);
 }
 
 * {
@@ -578,10 +718,10 @@ video {
 }
 
 .stream-url-value {
-    background: rgba(0, 0, 0, 0.17);
+    background: var(--control-background);
     border: 1px solid var(--border);
     border-radius: 6px;
-    color: #cfe7ff;
+    color: var(--code-text);
     display: block;
     font: 11px/1.4 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
     overflow-wrap: anywhere;

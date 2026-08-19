@@ -5,6 +5,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 THEME_SCRIPT = PROJECT_ROOT / "web/theme.js"
 SAND_TEXTURE = PROJECT_ROOT / "web/sand-texture.svg"
+SAND_BACKGROUND = PROJECT_ROOT / "web/sand-waves-v2.webp"
+ICE_BACKGROUND = PROJECT_ROOT / "web/curling-two-sheets.webp"
 THEME_STYLES = (
     PROJECT_ROOT / "web/style.css",
     PROJECT_ROOT / "app/templates/theme.css",
@@ -67,8 +69,35 @@ class ThemeUiTests(unittest.TestCase):
                 self.assertIn(".theme-picker", source)
                 self.assertIn(".theme-menu", source)
                 self.assertIn("flex: 0 0 34px", source)
-                self.assertIn('url("/sand-texture.svg?v=3")', source)
-                self.assertIn("320px 240px", source)
+                self.assertIn('url("/sand-waves-v2.webp?v=2")', source)
+                self.assertIn("max(100vw, 1200px) auto", source)
+                self.assertIn(':root[data-theme="sand"] .brand-title', source)
+                self.assertIn(':root[data-theme="sand"] .account-action', source)
+                self.assertIn(':root[data-theme="sand"] .topbar::before', source)
+                self.assertIn("width: 100vw", source)
+                self.assertIn('url("/curling-two-sheets.webp?v=1")', source)
+                self.assertIn("background-attachment: fixed", source)
+                self.assertIn(':root[data-theme="ice"] .topbar::before', source)
+                self.assertIn(':root[data-theme="ice"] .stream-card', source)
+                self.assertIn(':root[data-theme="ice"] .user-panel', source)
+                self.assertIn("background-size: auto 920px", source)
+
+    def test_light_themes_define_readable_code_and_disabled_text(self):
+        expected = (
+            "--code-text: #0a568d;",
+            "--code-text: #70480f;",
+            "color: var(--code-text);",
+        )
+        for path in THEME_STYLES:
+            with self.subTest(path=path):
+                source = path.read_text(encoding="utf-8")
+                for declaration in expected:
+                    self.assertIn(declaration, source)
+
+        admin_source = THEME_STYLES[1].read_text(encoding="utf-8")
+        self.assertIn("margin: 0;", admin_source)
+        self.assertIn("--disabled-card-opacity: 0.76;", admin_source)
+        self.assertIn("opacity: var(--disabled-card-opacity);", admin_source)
 
     def test_sand_texture_has_visible_irregular_grains(self):
         source = SAND_TEXTURE.read_text(encoding="utf-8")
@@ -77,6 +106,22 @@ class ThemeUiTests(unittest.TestCase):
         self.assertNotIn("<path", source)
         self.assertIn('fill="#6f604d"', source)
         self.assertIn('fill="#fffdf7"', source)
+
+    def test_sand_v2_background_is_local_optimized_webp(self):
+        source = SAND_BACKGROUND.read_bytes()
+
+        self.assertEqual(source[:4], b"RIFF")
+        self.assertEqual(source[8:12], b"WEBP")
+        self.assertGreater(len(source), 20_000)
+        self.assertLess(len(source), 200_000)
+
+    def test_ice_background_is_local_optimized_webp(self):
+        source = ICE_BACKGROUND.read_bytes()
+
+        self.assertEqual(source[:4], b"RIFF")
+        self.assertEqual(source[8:12], b"WEBP")
+        self.assertGreater(len(source), 50_000)
+        self.assertLess(len(source), 200_000)
 
 
 
