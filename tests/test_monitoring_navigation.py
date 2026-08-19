@@ -18,6 +18,25 @@ class MonitoringNavigationTests(unittest.TestCase):
         self.assertIn('data-minimum-role="operator"', html)
         self.assertGreaterEqual(html.count("hidden>"), 2)
 
+    def test_monitoring_details_can_be_hidden_and_preference_is_saved(self):
+        html = (PROJECT_ROOT / "web/index.html").read_text(
+            encoding="utf-8",
+        )
+        script = (PROJECT_ROOT / "web/script.js").read_text(
+            encoding="utf-8",
+        )
+        styles = (PROJECT_ROOT / "web/style.css").read_text(
+            encoding="utf-8",
+        )
+
+        self.assertIn('id="detailsToggle"', html)
+        self.assertIn('aria-pressed="false"', html)
+        self.assertIn("MONITOR_DETAILS_KEY", script)
+        self.assertIn("setupMonitorDetails();", script)
+        self.assertIn("localStorage.setItem(MONITOR_DETAILS_KEY", script)
+        self.assertIn("details-hidden", script)
+        self.assertIn(".grid.details-hidden .stream-details", styles)
+
     def test_navigation_uses_safe_session_metadata(self):
         script = (PROJECT_ROOT / "web/script.js").read_text(
             encoding="utf-8",
