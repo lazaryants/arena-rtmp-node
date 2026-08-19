@@ -89,6 +89,7 @@ class RestreamSupervisor:
                 "-b:a", "128k",
                 "-ar", "48000",
                 "-ac", "2",
+                "-shortest",
             ])
         elif audio_mode == "none":
             command.extend([
