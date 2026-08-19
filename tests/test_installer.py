@@ -35,6 +35,8 @@ class InstallerTests(unittest.TestCase):
                 target: 0o755,
                 target / "app": 0o755,
                 target / "app/restream_manager.py": 0o644,
+                target / "logrotate": 0o755,
+                target / "logrotate/arena-rtmp-node": 0o644,
                 target / "web": 0o755,
                 target / "scripts": 0o755,
                 target / "scripts/install.sh": 0o755,
