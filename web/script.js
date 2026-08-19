@@ -7,10 +7,35 @@ const PLAYER_RETRY_MIN_MS = 1000;
 const PLAYER_RETRY_MAX_MS = 15000;
 const PLAYER_STALL_TIMEOUT_MS = 15000;
 const MOBILE_PLAYBACK_QUERY = '(max-width: 760px), (pointer: coarse)';
+const MOBILE_MAX_ACTIVE_PLAYERS = 2;
 const CONSERVE_MOBILE_PLAYBACK = (
     window.matchMedia(MOBILE_PLAYBACK_QUERY).matches
     && 'IntersectionObserver' in window
 );
+const mobilePlayerVisibility = new Map();
+
+function rebalanceMobilePlayback() {
+    const allowed = new Set(
+        [...mobilePlayerVisibility.entries()]
+            .filter(([, state]) => state.ratio >= 0.25)
+            .sort((left, right) => right[1].ratio - left[1].ratio)
+            .slice(0, MOBILE_MAX_ACTIVE_PLAYERS)
+            .map(([playerId]) => playerId)
+    );
+
+    mobilePlayerVisibility.forEach((state, playerId) => {
+        state.setAllowed(allowed.has(playerId));
+    });
+}
+
+function updateMobilePlayerVisibility(playerId, ratio, setAllowed) {
+    mobilePlayerVisibility.set(playerId, {ratio, setAllowed});
+}
+
+function removeMobilePlayer(playerId) {
+    mobilePlayerVisibility.delete(playerId);
+    rebalanceMobilePlayback();
+}
 
 const MONITOR_LAYOUT_KEY = 'arena-monitor-columns';
 const MONITOR_DETAILS_KEY = 'arena-monitor-details-visible';
@@ -435,13 +460,22 @@ function createStreamPlayer(stream) {
     });
 
     if (CONSERVE_MOBILE_PLAYBACK) {
+        updateMobilePlayerVisibility(
+            String(stream.prefix),
+            0,
+            setPlaybackAllowed,
+        );
         viewportObserver = new IntersectionObserver(entries => {
-            const visible = entries.some(entry => (
-                entry.isIntersecting && entry.intersectionRatio >= 0.25
-            ));
-            setPlaybackAllowed(visible);
+            entries.forEach(entry => {
+                updateMobilePlayerVisibility(
+                    String(stream.prefix),
+                    entry.isIntersecting ? entry.intersectionRatio : 0,
+                    setPlaybackAllowed,
+                );
+            });
+            rebalanceMobilePlayback();
         }, {
-            threshold: [0, 0.25],
+            threshold: [0, 0.25, 0.5, 0.75, 1],
         });
         viewportObserver.observe(video);
     }
@@ -482,6 +516,9 @@ function createStreamPlayer(stream) {
             clearRetry();
             if (watchdogTimer !== null) clearInterval(watchdogTimer);
             if (viewportObserver) viewportObserver.disconnect();
+            if (CONSERVE_MOBILE_PLAYBACK) {
+                removeMobilePlayer(String(stream.prefix));
+            }
             releaseMedia();
         }
     };

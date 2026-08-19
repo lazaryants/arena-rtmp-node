@@ -45,12 +45,19 @@ class MonitoringNavigationTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        self.assertIn("script.js?v=8", html)
+        self.assertIn("script.js?v=9", html)
+        self.assertIn("<h1>Live cameras Arena76</h1>", html)
+        self.assertNotIn("Field monitoring", html)
+        self.assertNotIn("India &amp; Pakistan", html)
         self.assertIn("MOBILE_PLAYBACK_QUERY", script)
         self.assertIn("CONSERVE_MOBILE_PLAYBACK", script)
+        self.assertIn("MOBILE_MAX_ACTIVE_PLAYERS = 2", script)
+        self.assertIn("rebalanceMobilePlayback()", script)
+        self.assertIn(".slice(0, MOBILE_MAX_ACTIVE_PLAYERS)", script)
         self.assertIn("new IntersectionObserver", script)
-        self.assertIn("entry.intersectionRatio >= 0.25", script)
-        self.assertIn("setPlaybackAllowed(visible)", script)
+        self.assertIn("state.ratio >= 0.25", script)
+        self.assertIn("entry.intersectionRatio", script)
+        self.assertIn("setPlaybackAllowed", script)
         self.assertIn("viewportObserver.disconnect()", script)
         self.assertIn("releaseMedia()", script)
 
