@@ -14,6 +14,7 @@ import psutil
 
 _RTMP_CACHE_LOCK = threading.Lock()
 _RTMP_APPLICATION_CACHE = {}
+_MEDIAMTX_RATE_CACHE = {}
 
 try:
     from .version import __version__
@@ -254,6 +255,180 @@ def merge_rtmp_snapshot(snapshot, hls, application_cache=None):
     }
 
 
+
+def _parse_iso_timestamp(value):
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    return parsed.timestamp()
+
+
+def _mediamtx_stream_metrics(item, now, rate_cache):
+    video_track = next(
+        (
+            track
+            for track in item.get("tracks2", [])
+            if track.get("codec") == "H264"
+        ),
+        {},
+    )
+    audio_track = next(
+        (
+            track
+            for track in item.get("tracks2", [])
+            if track.get("codec") in {"MPEG-4 Audio", "AAC"}
+        ),
+        {},
+    )
+    video = video_track.get("codecProps", {})
+    audio = audio_track.get("codecProps", {})
+    width = video.get("width") or None
+    height = video.get("height") or None
+    bytes_received = item.get("inboundBytes")
+    bitrate = None
+    previous = rate_cache.get(item.get("name"))
+    if (
+        isinstance(bytes_received, int)
+        and previous is not None
+        and now > previous["time"]
+        and bytes_received >= previous["bytes"]
+    ):
+        bitrate = round(
+            (bytes_received - previous["bytes"])
+            * 8
+            / (now - previous["time"])
+        )
+    if isinstance(bytes_received, int):
+        rate_cache[item.get("name")] = {
+            "bytes": bytes_received,
+            "time": now,
+        }
+
+    online_time = _parse_iso_timestamp(item.get("onlineTime"))
+    return {
+        "uptime_seconds": (
+            round(max(0.0, now - online_time), 1)
+            if online_time is not None
+            else None
+        ),
+        "input_bitrate_bps": bitrate,
+        "video_bitrate_bps": None,
+        "audio_bitrate_bps": None,
+        "bytes_received": bytes_received,
+        "publishers": 1,
+        "players": len(item.get("readers", [])),
+        "publisher_dropped": item.get("inboundFramesInError", 0),
+        "video": {
+            "codec": video_track.get("codec"),
+            "profile": video.get("profile") or None,
+            "level": video.get("level") or None,
+            "width": width,
+            "height": height,
+            "resolution": (
+                f"{width}x{height}"
+                if width is not None and height is not None
+                else None
+            ),
+            "source_fps": None,
+        },
+        "audio": {
+            "codec": (
+                "AAC"
+                if audio_track.get("codec") == "MPEG-4 Audio"
+                else audio_track.get("codec")
+            ),
+            "profile": None,
+            "sample_rate_hz": audio.get("sampleRate"),
+            "channels": audio.get("channelCount"),
+        },
+    }
+
+
+def parse_mediamtx_paths(data, place_ids, now=None, rate_cache=None):
+    """Convert selected MediaMTX paths into the existing safe source schema."""
+    now = time.time() if now is None else now
+    rate_cache = _MEDIAMTX_RATE_CACHE if rate_cache is None else rate_cache
+    selected_names = {f"place{place_id}" for place_id in place_ids}
+    applications = {}
+
+    for item in data.get("items", []):
+        name = item.get("name")
+        if (
+            name not in selected_names
+            or item.get("ready") is not True
+            or item.get("source") is None
+        ):
+            continue
+        readers = len(item.get("readers", []))
+        applications[name] = {
+            "streams": 1,
+            "clients": 1 + readers,
+            "stream_metrics": [
+                _mediamtx_stream_metrics(item, now, rate_cache)
+            ],
+        }
+
+    return {
+        "reachable": True,
+        "active_streams": len(applications),
+        "clients": sum(
+            application["clients"]
+            for application in applications.values()
+        ),
+        "applications": applications,
+    }
+
+
+def mediamtx_snapshot(api_url, place_ids, timeout=2):
+    url = f"{api_url.rstrip('/')}/v3/paths/list"
+    with urllib.request.urlopen(url, timeout=timeout) as response:
+        data = json.loads(response.read())
+    return parse_mediamtx_paths(data, place_ids)
+
+
+def merge_mediamtx_snapshot(rtmp, hls, mediamtx, place_ids):
+    """Overlay selected MediaMTX inputs without changing nginx RTMP places."""
+    applications = copy.deepcopy(rtmp.get("applications", {}))
+    media_applications = mediamtx.get("applications", {})
+    places = hls.get("places", {})
+
+    for place_id in place_ids:
+        application_name = f"place{place_id}"
+        place = places.get(str(place_id))
+        application = media_applications.get(application_name)
+        if application is None:
+            applications.pop(application_name, None)
+            if place is not None:
+                place["state"] = "no_signal"
+                place["latest_segment_age_seconds"] = None
+        else:
+            applications[application_name] = copy.deepcopy(application)
+            if place is not None:
+                place["state"] = "active"
+                place["latest_segment_age_seconds"] = 0.0
+
+    counts = {"active": 0, "stale": 0, "no_signal": 0}
+    for place in places.values():
+        counts[place["state"]] += 1
+    hls["counts"] = counts
+
+    return {
+        "reachable": rtmp.get("reachable", False),
+        "active_streams": sum(
+            application.get("streams", 0)
+            for application in applications.values()
+        ),
+        "clients": sum(
+            application.get("clients", 0)
+            for application in applications.values()
+        ),
+        "applications": applications,
+    }
+
+
 def system_snapshot(settings):
     memory = psutil.virtual_memory()
     disk_path = settings.hls_root if settings.hls_root.exists() else settings.project_root
@@ -304,6 +479,16 @@ def health_snapshot(settings):
     except (OSError, ValueError, ET.ParseError):
         checks["rtmp_stat"] = {"ok": False}
 
+    if settings.mediamtx_hls_places:
+        try:
+            mediamtx = mediamtx_snapshot(
+                settings.mediamtx_api_url,
+                settings.mediamtx_hls_places,
+            )
+            checks["mediamtx_api"] = {"ok": mediamtx["reachable"]}
+        except (OSError, ValueError, json.JSONDecodeError):
+            checks["mediamtx_api"] = {"ok": False}
+
     return {
         "status": "ok" if all(check["ok"] for check in checks.values()) else "degraded",
         "timestamp": timestamp_utc(),
@@ -338,6 +523,24 @@ def metrics_snapshot(settings):
 
     with _RTMP_CACHE_LOCK:
         rtmp = merge_rtmp_snapshot(worker_rtmp, hls)
+
+        if settings.mediamtx_hls_places:
+            try:
+                mediamtx = mediamtx_snapshot(
+                    settings.mediamtx_api_url,
+                    settings.mediamtx_hls_places,
+                )
+            except (OSError, ValueError, json.JSONDecodeError):
+                mediamtx = {
+                    "reachable": False,
+                    "applications": {},
+                }
+            rtmp = merge_mediamtx_snapshot(
+                rtmp,
+                hls,
+                mediamtx,
+                settings.mediamtx_hls_places,
+            )
 
     return {
         "timestamp": timestamp_utc(),
