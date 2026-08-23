@@ -66,6 +66,35 @@ def validate_profile(profile):
     ):
         raise ValueError("auth_places must contain unique integers from 1 to 16")
 
+    mediamtx_hls_upstream = profile.get("mediamtx_hls_upstream")
+    if (
+        mediamtx_hls_upstream is not None
+        and (
+            not isinstance(mediamtx_hls_upstream, str)
+            or not UPSTREAM_RE.fullmatch(mediamtx_hls_upstream)
+        )
+    ):
+        raise ValueError(
+            "mediamtx_hls_upstream must use 127.0.0.1 and a valid port"
+        )
+
+    mediamtx_hls_places = profile.get("mediamtx_hls_places", [])
+    if (
+        not isinstance(mediamtx_hls_places, list)
+        or any(
+            type(place) is not int or not 1 <= place <= 16
+            for place in mediamtx_hls_places
+        )
+        or len(set(mediamtx_hls_places)) != len(mediamtx_hls_places)
+    ):
+        raise ValueError(
+            "mediamtx_hls_places must contain unique integers from 1 to 16"
+        )
+    if mediamtx_hls_places and mediamtx_hls_upstream is None:
+        raise ValueError(
+            "mediamtx_hls_upstream is required when MediaMTX HLS places are set"
+        )
+
     rtmp_port = profile.get("rtmp_port", 1935)
     if type(rtmp_port) is not int or not 1 <= rtmp_port <= 65535:
         raise ValueError("rtmp_port must be an integer from 1 to 65535")
@@ -87,6 +116,8 @@ def validate_profile(profile):
         "rtmp_port": rtmp_port,
         "auth_callback": auth_callback,
         "auth_places": set(auth_places),
+        "mediamtx_hls_upstream": mediamtx_hls_upstream,
+        "mediamtx_hls_places": sorted(mediamtx_hls_places),
     }
 
 
@@ -116,6 +147,40 @@ def render_applications(profile):
         ])
         applications.append("\n".join(lines))
     return "\n\n".join(applications)
+
+
+def render_mediamtx_hls_locations(profile):
+    upstream = profile["mediamtx_hls_upstream"]
+    blocks = []
+    for place_id in profile["mediamtx_hls_places"]:
+        blocks.append(
+            "\n".join([
+                f"    location ^~ /hls/place{place_id}/ {{",
+                (
+                    f"        rewrite ^/hls/place{place_id}/stream{place_id}"
+                    rf"\.m3u8$ /place{place_id}/index.m3u8 break;"
+                ),
+                (
+                    f"        rewrite ^/hls/place{place_id}/(.*)$ "
+                    f"/place{place_id}/$1 break;"
+                ),
+                f"        proxy_pass http://{upstream};",
+                "        proxy_http_version 1.1;",
+                "        proxy_buffering off;",
+                "        proxy_request_buffering off;",
+                "        proxy_read_timeout 30s;",
+                (
+                    f"        proxy_cookie_path /place{place_id}/ "
+                    f"/hls/place{place_id}/;"
+                ),
+                "        add_header Cache-Control no-cache always;",
+                "        add_header Access-Control-Allow-Origin * always;",
+                "        expires -1;",
+                "        auth_basic off;",
+                "    }",
+            ])
+        )
+    return "\n\n".join(blocks)
 
 
 def replace_markers(template, replacements):
@@ -165,6 +230,7 @@ def render(profile_path, output_dir):
         "HLS_ROOT": profile["hls_root"],
         "BASIC_AUTH_FILE": profile["basic_auth_file"],
         "MANAGER_UPSTREAM": profile["manager_upstream"],
+        "MEDIAMTX_HLS_LOCATIONS": render_mediamtx_hls_locations(profile),
     })
 
     outputs = {
