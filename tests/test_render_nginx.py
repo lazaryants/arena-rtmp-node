@@ -16,6 +16,8 @@ class RenderNginxTests(unittest.TestCase):
             "hls_root": "/var/www/hls",
             "basic_auth_file": "/etc/nginx/.htpasswd",
             "manager_upstream": "127.0.0.1:5000",
+            "mediamtx_hls_upstream": "127.0.0.1:8888",
+            "mediamtx_hls_places": [9, 10],
             "rtmp_port": 1935,
             "auth_callback": "http://127.0.0.1:8080/auth",
             "auth_places": [15],
@@ -46,6 +48,22 @@ class RenderNginxTests(unittest.TestCase):
         self.assertIn("root /var/lib/letsencrypt;", http)
         self.assertIn("auth_basic off;", http)
         self.assertIn("return 301 https://$host$request_uri;", http)
+        self.assertIn("location ^~ /hls/place9/", http)
+        self.assertIn("location ^~ /hls/place10/", http)
+        self.assertIn(
+            "rewrite ^/hls/place9/stream9\\.m3u8$ "
+            "/place9/index.m3u8 break;",
+            http,
+        )
+        self.assertIn("proxy_pass http://127.0.0.1:8888;", http)
+        self.assertIn(
+            "proxy_cookie_path /place9/ /hls/place9/;",
+            http,
+        )
+        self.assertLess(
+            http.index("location ^~ /hls/place9/"),
+            http.index("location ~ ^/hls/place"),
+        )
         self.assertNotIn("@@", rtmp + http)
 
     def test_application_rbac_replaces_nginx_basic_auth(self):
@@ -75,6 +93,37 @@ class RenderNginxTests(unittest.TestCase):
             "        try_files $uri $uri/ =404;",
             http,
         )
+
+    def test_omits_mediamtx_locations_by_default(self):
+        profile = self.profile()
+        profile.pop("mediamtx_hls_upstream")
+        profile.pop("mediamtx_hls_places")
+        temporary_directory, outputs = self.render_profile(profile)
+        self.addCleanup(temporary_directory.cleanup)
+
+        http = outputs["arena-rtmp-http.conf"]
+        self.assertNotIn("location ^~ /hls/place9/", http)
+        self.assertNotIn("proxy_pass http://127.0.0.1:8888;", http)
+
+    def test_requires_local_mediamtx_upstream(self):
+        profile = self.profile()
+        profile["mediamtx_hls_upstream"] = "media.example.test:8888"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            profile_path = root / "profile.json"
+            profile_path.write_text(json.dumps(profile), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "127.0.0.1"):
+                render(profile_path, root / "output")
+
+    def test_requires_upstream_for_mediamtx_places(self):
+        profile = self.profile()
+        profile.pop("mediamtx_hls_upstream")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            profile_path = root / "profile.json"
+            profile_path.write_text(json.dumps(profile), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "required"):
+                render(profile_path, root / "output")
 
     def test_rejects_unsafe_path(self):
         profile = self.profile()
