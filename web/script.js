@@ -39,6 +39,7 @@ function removeMobilePlayer(playerId) {
 }
 
 const MONITOR_LAYOUT_KEY = 'arena-monitor-columns';
+const MONITOR_MOBILE_LAYOUT_KEY = 'arena-monitor-mobile-columns';
 const MONITOR_DETAILS_KEY = 'arena-monitor-details-visible';
 
 function setMonitorDetailsVisible(visible) {
@@ -69,13 +70,25 @@ function setupMonitorDetails() {
 }
 
 function setMonitorColumns(value) {
-    const columns = ['2', '3', '4'].includes(String(value))
+    const allowed = CONSERVE_MOBILE_PLAYBACK
+        ? ['1', '2']
+        : ['2', '3', '4'];
+    const fallback = CONSERVE_MOBILE_PLAYBACK ? '1' : '4';
+    const columns = allowed.includes(String(value))
         ? String(value)
-        : '4';
+        : fallback;
+    const storageKey = CONSERVE_MOBILE_PLAYBACK
+        ? MONITOR_MOBILE_LAYOUT_KEY
+        : MONITOR_LAYOUT_KEY;
     const grid = document.getElementById('streamsGrid');
     if (!grid) return;
 
-    grid.classList.remove('columns-2', 'columns-3', 'columns-4');
+    grid.classList.remove(
+        'columns-1',
+        'columns-2',
+        'columns-3',
+        'columns-4'
+    );
     grid.classList.add(`columns-${columns}`);
 
     document.querySelectorAll('.layout-switcher button').forEach(button => {
@@ -85,7 +98,7 @@ function setMonitorColumns(value) {
         );
     });
 
-    localStorage.setItem(MONITOR_LAYOUT_KEY, columns);
+    localStorage.setItem(storageKey, columns);
 }
 
 function setupMonitorLayout() {
@@ -94,7 +107,10 @@ function setupMonitorLayout() {
             setMonitorColumns(button.dataset.columns);
         });
     });
-    setMonitorColumns(localStorage.getItem(MONITOR_LAYOUT_KEY) || '4');
+    const storageKey = CONSERVE_MOBILE_PLAYBACK
+        ? MONITOR_MOBILE_LAYOUT_KEY
+        : MONITOR_LAYOUT_KEY;
+    setMonitorColumns(localStorage.getItem(storageKey));
 }
 
 function getPlaceMetrics(prefix) {
@@ -476,7 +492,10 @@ function createStreamPlayer(stream) {
         container.classList.toggle('mobile-live-active', allowed);
 
         if (toggle) {
-            toggle.textContent = allowed ? 'Back to preview' : 'Watch live';
+            const label = allowed ? 'Back to preview' : 'Watch live';
+            toggle.textContent = allowed ? '■' : '▶';
+            toggle.setAttribute('aria-label', label);
+            toggle.setAttribute('title', label);
             toggle.setAttribute('aria-pressed', String(allowed));
         }
 
@@ -729,7 +748,9 @@ function renderStreams() {
                 <button class="mobile-live-toggle"
                         id="liveToggle${stream.prefix}"
                         type="button"
-                        aria-pressed="false">Watch live</button>
+                        aria-label="Watch live"
+          title="Watch live"
+          aria-pressed="false">▶</button>
             </div>
 
             <div class="stream-details">
