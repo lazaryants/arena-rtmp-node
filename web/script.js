@@ -286,6 +286,21 @@ function getLatencyColorClass(value) {
     return 'tech-value error';
 }
 
+function getHlsFrameRate(hls) {
+    const levels = hls?.levels || [];
+    const level = levels[hls?.currentLevel] || levels[0];
+    const frameRate = level?.frameRate;
+    return Number.isFinite(frameRate) && frameRate > 0 ? frameRate : null;
+}
+
+function getSegmentColorClass(value) {
+    if (value >= 1.5 && value <= 6) return 'tech-value good';
+    if ((value >= 1 && value < 1.5) || (value > 6 && value <= 10)) {
+        return 'tech-value warning';
+    }
+    return 'tech-value error';
+}
+
 function updateTechInfo(stream, hls, video) {
     const p = stream.prefix;
     const { source, hls: serverHls } = getPlaceMetrics(p);
@@ -293,12 +308,13 @@ function updateTechInfo(stream, hls, video) {
     const sourceAudio = source?.audio;
 
     setMetric(p, 'resolution', sourceVideo?.resolution?.replace('x', '×'));
+    const sourceFps = Number.isFinite(sourceVideo?.source_fps)
+        ? sourceVideo.source_fps
+        : getHlsFrameRate(hls);
     setMetric(
         p,
         'fps',
-        Number.isFinite(sourceVideo?.source_fps)
-            ? `${sourceVideo.source_fps.toFixed(1)} fps`
-            : '-'
+        Number.isFinite(sourceFps) ? `${sourceFps.toFixed(1)} fps` : '-'
     );
     setMetric(p, 'bitrate', formatBitrate(source?.input_bitrate_bps));
     setMetric(p, 'codec', formatVideoCodec(sourceVideo));
@@ -323,20 +339,16 @@ function updateTechInfo(stream, hls, video) {
             : 'tech-value'
     );
     
-    // Keyframe
+    // Duration of one HLS media fragment, distinct from end-to-end latency.
     const kfEl = document.getElementById(`keyframe${p}`);
     if (kfEl) {
-        if (hls && hls.levels && hls.levels.length > 0) {
-            const level = hls.levels[hls.currentLevel];
-            if (level.details && level.details.fragments && level.details.fragments.length > 0) {
-                const fragment = level.details.fragments[0];
-                const segmentDuration = fragment.duration;
-                kfEl.innerHTML = `${segmentDuration.toFixed(1)}s <span class="tech-hint">(HLS segment)</span>`;
-                kfEl.className = getColorClass(segmentDuration, {good: 4, warning: 6});
-            } else {
-                kfEl.innerHTML = `4.0s <span class="tech-hint">(HLS segment)</span>`;
-                kfEl.className = 'tech-value good';
-            }
+        const levels = hls?.levels || [];
+        const level = levels[hls?.currentLevel] || levels[0];
+        const fragment = level?.details?.fragments?.[0];
+        const segmentDuration = fragment?.duration;
+        if (Number.isFinite(segmentDuration)) {
+            kfEl.textContent = `${segmentDuration.toFixed(1)}s`;
+            kfEl.className = getSegmentColorClass(segmentDuration);
         } else {
             kfEl.textContent = '-';
             kfEl.className = 'tech-value';
@@ -818,9 +830,9 @@ function renderStreams() {
                         <div class="tech-row"><span class="tech-label">Video codec</span><span class="tech-value" id="codec${stream.prefix}">-</span></div>
                         <div class="tech-row"><span class="tech-label">Audio codec</span><span class="tech-value" id="audio${stream.prefix}">-</span></div>
                         <div class="tech-row"><span class="tech-label">Uptime</span><span class="tech-value" id="uptime${stream.prefix}">-</span></div>
-                        <div class="tech-row"><span class="tech-label">RTMP dropped</span><span class="tech-value" id="dropped${stream.prefix}">-</span></div>
-                        <div class="tech-row"><span class="tech-label">Last media</span><span class="tech-value" id="lastupdate${stream.prefix}">-</span></div>
-                        <div class="tech-row"><span class="tech-label">HLS segment</span><span class="tech-value" id="keyframe${stream.prefix}">-</span></div>
+                        <div class="tech-row"><span class="tech-label" title="Frames rejected by the receiving server">Ingest errors</span><span class="tech-value" id="dropped${stream.prefix}">-</span></div>
+                        <div class="tech-row"><span class="tech-label" title="Age of the latest media observed by the server">Signal age</span><span class="tech-value" id="lastupdate${stream.prefix}">-</span></div>
+                        <div class="tech-row"><span class="tech-label" title="Duration of one HLS media fragment; this is not stream latency">HLS segment</span><span class="tech-value" id="keyframe${stream.prefix}">-</span></div>
                         <div class="tech-row"><span class="tech-label">HLS latency</span><span class="tech-value" id="latency${stream.prefix}">-</span></div>
                         <div class="tech-row"><span class="tech-label">Player buffer</span><span class="tech-value" id="buffer${stream.prefix}">-</span></div>
                         <div class="tech-row"><span class="tech-label">Browser dropped</span><span class="tech-value" id="browserdropped${stream.prefix}">-</span></div>
