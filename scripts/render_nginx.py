@@ -165,6 +165,10 @@ def render_mediamtx_hls_locations(profile):
                     f"/place{place_id}/$1 break;"
                 ),
                 f"        proxy_pass http://{upstream};",
+                (
+                    f"        proxy_redirect /place{place_id}/ "
+                    f"/hls/place{place_id}/;"
+                ),
                 "        proxy_http_version 1.1;",
                 "        proxy_buffering off;",
                 "        proxy_request_buffering off;",
