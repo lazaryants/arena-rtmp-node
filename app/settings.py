@@ -91,6 +91,12 @@ class Settings:
             "ARENA_RTMP_MEDIAMTX_HLS_PLACES",
         ),
     )
+    preview_upload_token: str = field(
+        default_factory=lambda: os.environ.get(
+            "ARENA_RTMP_PREVIEW_UPLOAD_TOKEN",
+            "",
+        ),
+    )
     rbac_enabled: bool = field(
         default_factory=lambda: environment_flag(
             "ARENA_RTMP_RBAC_ENABLED",
@@ -140,6 +146,13 @@ class Settings:
         configured = os.environ.get("ARENA_RTMP_CONFIG")
         return Path(configured) if configured else (
             self.project_root / "state" / "restream-config.json"
+        )
+
+    @property
+    def preview_dir(self):
+        configured = os.environ.get("ARENA_RTMP_PREVIEW_DIR")
+        return Path(configured) if configured else (
+            self.project_root / "state" / "previews"
         )
 
     @property
