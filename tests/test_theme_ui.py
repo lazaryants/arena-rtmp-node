@@ -51,7 +51,7 @@ class ThemeUiTests(unittest.TestCase):
             self.assertIn("z-index: 2000", topbar)
             self.assertIn("z-index: 1200", styles)
 
-        self.assertIn("style.css?v=15", monitoring_html)
+        self.assertIn("style.css?v=16", monitoring_html)
 
     def test_theme_preference_is_persistent_and_dark_by_default(self):
         source = THEME_SCRIPT.read_text(encoding="utf-8")
