@@ -8,6 +8,11 @@
     "hls_root": "/var/www/hls",
     "basic_auth_file": "/etc/nginx/.htpasswd",
     "manager_upstream": "127.0.0.1:5000",
+    "mediamtx_hls_upstream": "127.0.0.1:8888",
+    "mediamtx_hls_places": [
+        9,
+        10
+    ],
     "rtmp_port": 1935,
     "auth_callback": "http://127.0.0.1:8080/auth",
     "auth_places": [
