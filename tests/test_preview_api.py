@@ -66,6 +66,7 @@ class PreviewApiTests(unittest.TestCase):
         self.assertEqual(downloaded.data, JPEG)
         self.assertIn("no-store", downloaded.headers["Cache-Control"])
         self.assertIn("X-Preview-Age", downloaded.headers)
+        downloaded.close()
 
     def test_preview_rejects_wrong_type_invalid_jpeg_and_large_body(self):
         self.assertEqual(
