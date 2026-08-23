@@ -72,7 +72,7 @@ copy_project() {
     local item
 
     for item in \
-        app config docs legacy logrotate nginx scripts systemd tests web \
+        app config docs legacy logrotate mediamtx nginx scripts systemd tests web \
         .gitignore README.md requirements.txt; do
         cp -a -- "${SOURCE_DIR}/${item}" "${destination}/"
     done
@@ -88,7 +88,7 @@ normalize_installed_permissions() {
     local directory
 
     chmod 0755 "${target}"
-    for directory in app docs legacy logrotate nginx scripts systemd tests web; do
+    for directory in app docs legacy logrotate mediamtx nginx scripts systemd tests web; do
         find "${target}/${directory}" -type d -exec chmod 0755 {} +
         find "${target}/${directory}" -type f -exec chmod 0644 {} +
     done
