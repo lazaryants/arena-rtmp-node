@@ -45,7 +45,7 @@ class MonitoringNavigationTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        self.assertIn("script.js?v=10", html)
+        self.assertIn("script.js?v=11", html)
         self.assertIn("<h1>Live cameras Arena76</h1>", html)
         self.assertNotIn("Field monitoring", html)
         self.assertNotIn("India &amp; Pakistan", html)
@@ -65,6 +65,24 @@ class MonitoringNavigationTests(unittest.TestCase):
         self.assertIn("setPlaybackAllowed", script)
         self.assertIn("viewportObserver.disconnect()", script)
         self.assertIn("releaseMedia()", script)
+
+    def test_hls_metadata_fills_fps_and_segment_metrics(self):
+        script = (PROJECT_ROOT / "web/script.js").read_text(
+            encoding="utf-8",
+        )
+
+        self.assertIn("function getHlsFrameRate(hls)", script)
+        self.assertIn("level?.frameRate", script)
+        self.assertIn("function getSegmentColorClass(value)", script)
+        self.assertIn("value >= 1.5 && value <= 6", script)
+        self.assertNotIn("4.0s <span", script)
+        self.assertIn(">Ingest errors</span>", script)
+        self.assertIn(">Signal age</span>", script)
+        self.assertIn(
+            "Duration of one HLS media fragment; "
+            "this is not stream latency",
+            script,
+        )
 
     def test_navigation_uses_safe_session_metadata(self):
         script = (PROJECT_ROOT / "web/script.js").read_text(
