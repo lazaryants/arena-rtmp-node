@@ -16,6 +16,26 @@ def environment_flag(name, default=False):
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def environment_place_ids(name):
+    value = os.environ.get(name, "").strip()
+    if not value:
+        return ()
+
+    place_ids = []
+    for item in value.split(","):
+        try:
+            place_id = int(item.strip())
+        except ValueError as error:
+            raise ValueError(
+                f"{name} must contain comma-separated place numbers"
+            ) from error
+        if not 1 <= place_id <= 16:
+            raise ValueError(f"{name} places must be between 1 and 16")
+        if place_id not in place_ids:
+            place_ids.append(place_id)
+    return tuple(place_ids)
+
+
 @dataclass(frozen=True)
 class Settings:
     project_root: Path = field(
@@ -58,6 +78,17 @@ class Settings:
         default_factory=lambda: os.environ.get(
             "ARENA_RTMP_STAT_URL",
             "http://127.0.0.1:8090/stat",
+        ),
+    )
+    mediamtx_api_url: str = field(
+        default_factory=lambda: os.environ.get(
+            "ARENA_RTMP_MEDIAMTX_API_URL",
+            "http://127.0.0.1:9997",
+        ).rstrip("/"),
+    )
+    mediamtx_hls_places: tuple = field(
+        default_factory=lambda: environment_place_ids(
+            "ARENA_RTMP_MEDIAMTX_HLS_PLACES",
         ),
     )
     rbac_enabled: bool = field(
