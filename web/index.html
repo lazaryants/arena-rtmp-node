@@ -6,7 +6,7 @@
     <title>Arena RTMP Node — Monitoring</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=1">
     <script src="/theme.js?v=3"></script>
-    <link rel="stylesheet" href="style.css?v=15">
+    <link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
     <header class="topbar">
@@ -71,9 +71,16 @@
                 <span class="page-badge">System online</span>
                 <div class="layout-switcher" aria-label="Cards per row">
                     <span>Columns</span>
+                    <button class="mobile-column-option"
+                            type="button"
+                            data-columns="1">1</button>
                     <button type="button" data-columns="2">2</button>
-                    <button type="button" data-columns="3">3</button>
-                    <button type="button" data-columns="4">4</button>
+                    <button class="desktop-column-option"
+                            type="button"
+                            data-columns="3">3</button>
+                    <button class="desktop-column-option"
+                            type="button"
+                            data-columns="4">4</button>
                 </div>
             </div>
         </div>
@@ -84,6 +91,6 @@
     </div>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="script.js?v=12"></script>
+    <script src="script.js?v=13"></script>
 </body>
 </html>
