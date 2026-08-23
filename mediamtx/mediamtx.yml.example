@@ -1,0 +1,65 @@
+# Reference configuration for the Arena MediaMTX gateway.
+# Copy to /etc/mediamtx/mediamtx.yml only for a new installation.
+# Never commit the real publisher password.
+logLevel: info
+logDestinations: [stdout]
+readTimeout: 15s
+writeTimeout: 15s
+writeQueueSize: 2048
+udpMaxPayloadSize: 1392
+
+authMethod: internal
+authInternalUsers:
+  - user: arena-media-publisher
+    pass: CHANGE_ME_STRONG_MEDIA_PASSWORD
+    ips: []
+    permissions:
+      - action: publish
+        path: '~^place([1-9]|10)$'
+
+  - user: any
+    pass:
+    ips: ["127.0.0.1", "::1"]
+    permissions:
+      - action: read
+      - action: api
+      - action: metrics
+
+api: true
+apiAddress: 127.0.0.1:9997
+metrics: true
+metricsAddress: 127.0.0.1:9998
+pprof: false
+playback: false
+
+rtsp: false
+rtmp: true
+rtmpAddress: :19350
+
+hls: true
+hlsAddress: 127.0.0.1:8888
+hlsEncryption: false
+hlsAllowOrigins: ['*']
+hlsVariant: fmp4
+hlsSegmentCount: 7
+hlsSegmentDuration: 2s
+hlsPartDuration: 200ms
+hlsSegmentMaxSize: 50M
+hlsAlwaysRemux: false
+
+webrtc: false
+srt: true
+srtAddress: :8890
+moq: false
+
+paths:
+  place1:
+  place2:
+  place3:
+  place4:
+  place5:
+  place6:
+  place7:
+  place8:
+  place9:
+  place10:
