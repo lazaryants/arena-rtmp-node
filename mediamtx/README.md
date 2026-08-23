@@ -21,7 +21,7 @@ MediaMTX. This prevents an application-only update from interrupting publishers.
 Initial migration policy:
 
 1. keep places 1-8 on Nginx RTMP and file-backed HLS;
-2. prepare MediaMTX paths 1-10 and authenticated RTMP/SRT publishing;
+2. prepare MediaMTX paths 1-16 and authenticated RTMP/SRT publishing;
 3. move one place at a time;
 4. add a migrated place to both `mediamtx_hls_places` in the Nginx render
    profile and `ARENA_RTMP_MEDIAMTX_HLS_PLACES` in `node.env`;
