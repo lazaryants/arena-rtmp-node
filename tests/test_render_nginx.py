@@ -57,6 +57,10 @@ class RenderNginxTests(unittest.TestCase):
         )
         self.assertIn("proxy_pass http://127.0.0.1:8888;", http)
         self.assertIn(
+            "proxy_redirect /place9/ /hls/place9/;",
+            http,
+        )
+        self.assertIn(
             "proxy_cookie_path /place9/ /hls/place9/;",
             http,
         )
