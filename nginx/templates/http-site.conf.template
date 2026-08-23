@@ -64,6 +64,8 @@ server {
         include proxy_params;
     }
 
+@@MEDIAMTX_HLS_LOCATIONS@@
+
     location ~ ^/hls/place([1-9]|1[0-6])/([A-Za-z0-9_.-]+)$ {
         alias @@HLS_ROOT@@/place$1/$2;
         types {
