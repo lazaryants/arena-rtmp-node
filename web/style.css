@@ -992,27 +992,63 @@ video {
     }
 }
 
+.mobile-preview-image,
+.mobile-live-toggle {
+    display: none;
+}
 
 @media (max-width: 760px), (pointer: coarse) {
-    .video-container.mobile-preview-paused {
-        cursor: pointer;
+    .video-container.mobile-preview-mode .mobile-preview-image {
+        display: block;
+        height: 100%;
+        inset: 0;
+        object-fit: contain;
+        position: absolute;
+        width: 100%;
     }
 
-    .video-container.mobile-preview-paused::after {
-        background: rgba(2, 6, 11, 0.72);
-        border: 1px solid rgba(148, 178, 218, 0.32);
+    .video-container.mobile-preview-mode video {
+        display: none;
+    }
+
+    .video-container.mobile-preview-mode.mobile-live-active video {
+        display: block;
+    }
+
+    .video-container.mobile-preview-mode.mobile-live-active .mobile-preview-image {
+        display: none;
+    }
+
+    .video-container.mobile-preview-mode .mobile-live-toggle {
+        background: rgba(2, 22, 14, 0.82);
+        border: 1px solid rgba(216, 240, 229, 0.48);
         border-radius: 999px;
-        bottom: 9px;
-        color: #d8e9ff;
-        content: attr(data-preview-label);
-        font-size: 10px;
-        font-weight: 700;
+        bottom: 10px;
+        color: #f4fff9;
+        cursor: pointer;
+        display: block;
+        font: 700 11px/1 Inter, "Segoe UI", sans-serif;
         left: 50%;
-        padding: 5px 9px;
-        pointer-events: none;
+        min-height: 32px;
+        padding: 7px 12px;
         position: absolute;
         transform: translateX(-50%);
         white-space: nowrap;
-        z-index: 2;
+        z-index: 3;
+    }
+
+    .video-container.mobile-preview-mode .mobile-live-toggle:disabled {
+        cursor: default;
+        opacity: 0.55;
+    }
+
+    .video-container.mobile-preview-mode:not(.mobile-preview-ready)::before {
+        color: #d8e9ff;
+        content: "Waiting for preview";
+        font-size: 11px;
+        inset: 50% auto auto 50%;
+        position: absolute;
+        transform: translate(-50%, -50%);
+        white-space: nowrap;
     }
 }
