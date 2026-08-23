@@ -46,7 +46,7 @@ class ThemeUiTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         for styles in (monitoring_styles, application_styles):
-            topbar = styles.split(".topbar {", 1)[1].split("}", 1)[0]
+            topbar = styles.split("\n.topbar {", 1)[1].split("}", 1)[0]
             self.assertIn("position: relative", topbar)
             self.assertIn("z-index: 2000", topbar)
             self.assertIn("z-index: 1200", styles)
