@@ -15,7 +15,7 @@ authInternalUsers:
     ips: []
     permissions:
       - action: publish
-        path: '~^place([1-9]|1[0-6])
+        path: '~^place([1-9]|1[0-6])$'
 
   - user: any
     pass:
@@ -69,51 +69,3 @@ paths:
   place14:
   place15:
   place16:
-
-
-  - user: any
-    pass:
-    ips: ["127.0.0.1", "::1"]
-    permissions:
-      - action: read
-      - action: api
-      - action: metrics
-
-api: true
-apiAddress: 127.0.0.1:9997
-metrics: true
-metricsAddress: 127.0.0.1:9998
-pprof: false
-playback: false
-
-rtsp: false
-rtmp: true
-rtmpAddress: :19350
-
-hls: true
-hlsAddress: 127.0.0.1:8888
-hlsEncryption: false
-hlsAllowOrigins: ['*']
-hlsVariant: fmp4
-hlsSegmentCount: 7
-hlsSegmentDuration: 2s
-hlsPartDuration: 200ms
-hlsSegmentMaxSize: 50M
-hlsAlwaysRemux: false
-
-webrtc: false
-srt: true
-srtAddress: :8890
-moq: false
-
-paths:
-  place1:
-  place2:
-  place3:
-  place4:
-  place5:
-  place6:
-  place7:
-  place8:
-  place9:
-  place10:
