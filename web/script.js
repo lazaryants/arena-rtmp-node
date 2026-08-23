@@ -545,15 +545,15 @@ function createStreamPlayer(stream) {
             );
             serverState = nextState;
 
-            if (toggle) {
-                toggle.disabled = nextState !== 'active' && !playbackAllowed;
-            }
             if (
                 CONSERVE_MOBILE_PLAYBACK
                 && playbackAllowed
                 && nextState !== 'active'
             ) {
                 selectMobilePlayer(null);
+            }
+            if (toggle) {
+                toggle.disabled = nextState !== 'active';
             }
             if (becameActive && playbackAllowed) {
                 clearRetry();
