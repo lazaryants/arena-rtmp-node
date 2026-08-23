@@ -37,34 +37,41 @@ class MonitoringNavigationTests(unittest.TestCase):
         self.assertIn("details-hidden", script)
         self.assertIn(".grid.details-hidden .stream-details", styles)
 
-    def test_mobile_players_only_run_inside_the_viewport(self):
+    def test_mobile_uses_jpeg_until_one_player_is_requested(self):
         html = (PROJECT_ROOT / "web/index.html").read_text(
             encoding="utf-8",
         )
         script = (PROJECT_ROOT / "web/script.js").read_text(
             encoding="utf-8",
         )
+        styles = (PROJECT_ROOT / "web/style.css").read_text(
+            encoding="utf-8",
+        )
 
-        self.assertIn("script.js?v=11", html)
+        self.assertIn("script.js?v=12", html)
+        self.assertIn("style.css?v=15", html)
         self.assertIn("<h1>Live cameras Arena76</h1>", html)
-        self.assertNotIn("Field monitoring", html)
-        self.assertNotIn("India &amp; Pakistan", html)
         self.assertIn("MOBILE_PLAYBACK_QUERY", script)
-        self.assertIn("CONSERVE_MOBILE_PLAYBACK", script)
-        self.assertIn("MOBILE_MAX_ACTIVE_PLAYERS = 2", script)
-        self.assertIn("MOBILE_ROTATION_INTERVAL_MS = 10000", script)
-        self.assertIn("rebalanceMobilePlayback()", script)
-        self.assertIn("advanceMobilePlayback", script)
-        self.assertIn("prioritizeMobilePlayer", script)
-        self.assertIn("capturePreviewFrame()", script)
-        self.assertIn("video.poster = previewCanvas.toDataURL", script)
+        self.assertIn("MOBILE_PREVIEW_REFRESH_MS = 2000", script)
+        self.assertIn("mobilePlayerControls", script)
+        self.assertIn("selectMobilePlayer(playerId)", script)
+        self.assertIn("selectMobilePlayer(null)", script)
+        self.assertIn(
+            "/api/node/previews/${stream.prefix}.jpg",
+            script,
+        )
+        self.assertIn("mobile-preview-image", script)
+        self.assertIn("mobile-live-toggle", script)
+        self.assertIn("Back to preview", script)
+        self.assertNotIn("MOBILE_MAX_ACTIVE_PLAYERS", script)
+        self.assertNotIn("MOBILE_ROTATION_INTERVAL_MS", script)
+        self.assertNotIn("new IntersectionObserver", script)
+        self.assertNotIn("capturePreviewFrame()", script)
+        self.assertIn(".mobile-preview-image", styles)
+        self.assertIn(".mobile-live-active", styles)
+        self.assertIn("display: none", styles)
         self.assertIn("playsinline", script)
-        self.assertIn("new IntersectionObserver", script)
-        self.assertIn("state.ratio >= 0.1", script)
-        self.assertIn("entry.intersectionRatio", script)
-        self.assertIn("setPlaybackAllowed", script)
-        self.assertIn("viewportObserver.disconnect()", script)
-        self.assertIn("releaseMedia()", script)
+
 
     def test_hls_metadata_fills_fps_and_segment_metrics(self):
         script = (PROJECT_ROOT / "web/script.js").read_text(
