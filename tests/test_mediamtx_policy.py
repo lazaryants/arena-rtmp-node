@@ -18,6 +18,7 @@ class MediaMtxPolicyTests(unittest.TestCase):
         self.assertIn("srt: true", config)
         self.assertIn("srtAddress: :8890", config)
         self.assertIn("hlsVariant: fmp4", config)
+        self.assertIn("hlsSegmentCount: 15", config)
         self.assertIn("hlsAddress: 127.0.0.1:8888", config)
         self.assertIn("apiAddress: 127.0.0.1:9997", config)
         self.assertIn("metricsAddress: 127.0.0.1:9998", config)
