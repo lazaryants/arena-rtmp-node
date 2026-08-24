@@ -48,7 +48,7 @@ class MonitoringNavigationTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        self.assertIn("script.js?v=14", html)
+        self.assertIn("script.js?v=15", html)
         self.assertIn("style.css?v=16", html)
         self.assertIn("<h1>Live cameras Arena76</h1>", html)
         self.assertIn("MOBILE_PLAYBACK_QUERY", script)
