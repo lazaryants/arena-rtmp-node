@@ -401,8 +401,14 @@ function createStreamPlayer(stream) {
 
     function attachHlsJs() {
         hls = new Hls({
+            // Eight simultaneous 1080p streams otherwise retain minutes of
+            // decoded MSE history in Chromium. Keep a small live window so
+            // obsolete MediaMTX fMP4 segments are evicted before they expire.
             liveSyncDurationCount: 3,
-            liveMaxLatencyDurationCount: 10,
+            liveMaxLatencyDurationCount: 6,
+            maxBufferLength: 12,
+            maxMaxBufferLength: 20,
+            backBufferLength: 8,
             enableWorker: true
         });
 
