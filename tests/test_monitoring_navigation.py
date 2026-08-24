@@ -114,6 +114,30 @@ class MonitoringNavigationTests(unittest.TestCase):
             script,
         )
 
+    def test_chrome_startup_stall_does_not_rebuild_players(self):
+        script = (PROJECT_ROOT / "web/script.js").read_text(
+            encoding="utf-8",
+        )
+
+        self.assertIn("PLAYER_STALL_TIMEOUT_MS = 15000", script)
+        self.assertIn(
+            "active stream is not advancing",
+            script,
+        )
+        self.assertNotIn(
+            "scheduleRecovery('video stalled')",
+            script,
+        )
+        self.assertNotIn(
+            "scheduleRecovery('stream became active')",
+            script,
+        )
+        self.assertIn(
+            "&& hls === null",
+            script,
+        )
+
+
     def test_navigation_uses_safe_session_metadata(self):
         script = (PROJECT_ROOT / "web/script.js").read_text(
             encoding="utf-8",
