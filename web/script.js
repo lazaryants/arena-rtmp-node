@@ -518,9 +518,10 @@ function createStreamPlayer(stream) {
     video.addEventListener('error', () => {
         scheduleRecovery('video element error');
     });
-    video.addEventListener('stalled', () => {
-        scheduleRecovery('video stalled');
-    });
+    // Chrome emits "stalled" while Media Source Extensions are still
+    // filling the initial live buffer. The watchdog below verifies actual
+    // playback progress for 15 seconds before rebuilding the player.
+    // Rebuilding immediately here creates an endless startup loop in Chrome.
 
     if (CONSERVE_MOBILE_PLAYBACK) {
         container.classList.add('mobile-preview-mode');
@@ -574,10 +575,18 @@ function createStreamPlayer(stream) {
             if (toggle) {
                 toggle.disabled = nextState !== 'active';
             }
-            if (becameActive && playbackAllowed) {
-                clearRetry();
+            // Do not rebuild an already attached player on the first
+            // metrics transition from no_signal to active. The HLS instance
+            // is already loading, and its fatal-error retry path remains
+            // responsible for genuine recovery.
+            if (
+                becameActive
+                && playbackAllowed
+                && hls === null
+                && retryTimer === null
+            ) {
                 retryDelay = PLAYER_RETRY_MIN_MS;
-                scheduleRecovery('stream became active');
+                rebuild();
             }
         },
         destroy() {
