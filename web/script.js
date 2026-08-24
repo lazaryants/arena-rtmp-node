@@ -527,7 +527,10 @@ function createStreamPlayer(stream) {
 
     video.addEventListener('playing', markPlaybackStarted);
     video.addEventListener('timeupdate', () => {
-        if (video.currentTime !== lastPlaybackTime) {
+        if (
+            video.currentTime > 0
+            && video.currentTime !== lastPlaybackTime
+        ) {
             markPlaybackStarted();
         }
     });
