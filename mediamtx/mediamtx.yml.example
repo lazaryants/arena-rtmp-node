@@ -41,7 +41,7 @@ hlsAddress: 127.0.0.1:8888
 hlsEncryption: false
 hlsAllowOrigins: ['*']
 hlsVariant: fmp4
-hlsSegmentCount: 7
+hlsSegmentCount: 15
 hlsSegmentDuration: 2s
 hlsPartDuration: 200ms
 hlsSegmentMaxSize: 50M
