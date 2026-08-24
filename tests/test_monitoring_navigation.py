@@ -48,7 +48,7 @@ class MonitoringNavigationTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        self.assertIn("script.js?v=15", html)
+        self.assertIn("script.js?v=16", html)
         self.assertIn("style.css?v=16", html)
         self.assertIn("<h1>Live cameras Arena76</h1>", html)
         self.assertIn("MOBILE_PLAYBACK_QUERY", script)
@@ -124,6 +124,24 @@ class MonitoringNavigationTests(unittest.TestCase):
         self.assertIn("maxMaxBufferLength: 20", script)
         self.assertIn("backBufferLength: 8", script)
         self.assertNotIn("liveMaxLatencyDurationCount: 10", script)
+
+
+    def test_mobile_hls_has_a_separate_startup_grace_period(self):
+        script = (PROJECT_ROOT / "web/script.js").read_text(
+            encoding="utf-8",
+        )
+
+        self.assertIn("PLAYER_STARTUP_TIMEOUT_MS = 45000", script)
+        self.assertIn("let playbackStarted = false", script)
+        self.assertIn("function markPlaybackStarted()", script)
+        self.assertIn("video.currentTime > 0", script)
+        self.assertIn("active stream did not start", script)
+        self.assertIn("startupTimedOut", script)
+        self.assertIn("playbackStalled", script)
+        self.assertNotIn(
+            "video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA",
+            script,
+        )
 
 
     def test_chrome_startup_stall_does_not_rebuild_players(self):
