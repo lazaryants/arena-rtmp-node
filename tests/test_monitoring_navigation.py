@@ -114,6 +114,18 @@ class MonitoringNavigationTests(unittest.TestCase):
             script,
         )
 
+    def test_desktop_hls_buffers_are_bounded_for_chromium(self):
+        script = (PROJECT_ROOT / "web/script.js").read_text(
+            encoding="utf-8",
+        )
+
+        self.assertIn("liveMaxLatencyDurationCount: 6", script)
+        self.assertIn("maxBufferLength: 12", script)
+        self.assertIn("maxMaxBufferLength: 20", script)
+        self.assertIn("backBufferLength: 8", script)
+        self.assertNotIn("liveMaxLatencyDurationCount: 10", script)
+
+
     def test_chrome_startup_stall_does_not_rebuild_players(self):
         script = (PROJECT_ROOT / "web/script.js").read_text(
             encoding="utf-8",
