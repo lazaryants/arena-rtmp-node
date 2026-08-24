@@ -6,6 +6,7 @@ const streamPlayers = new Map();
 const PLAYER_RETRY_MIN_MS = 1000;
 const PLAYER_RETRY_MAX_MS = 15000;
 const PLAYER_STALL_TIMEOUT_MS = 15000;
+const PLAYER_STARTUP_TIMEOUT_MS = 45000;
 const MOBILE_PLAYBACK_QUERY = '(max-width: 760px), (pointer: coarse)';
 const CONSERVE_MOBILE_PLAYBACK = window.matchMedia(
     MOBILE_PLAYBACK_QUERY
@@ -368,6 +369,8 @@ function createStreamPlayer(stream) {
     let serverState = 'no_signal';
     let lastPlaybackTime = null;
     let lastProgressAt = Date.now();
+    let startupStartedAt = Date.now();
+    let playbackStarted = false;
     let destroyed = false;
     let playbackAllowed = !CONSERVE_MOBILE_PLAYBACK;
 
@@ -397,6 +400,11 @@ function createStreamPlayer(stream) {
         retryDelay = PLAYER_RETRY_MIN_MS;
         lastPlaybackTime = video.currentTime;
         lastProgressAt = Date.now();
+    }
+
+    function markPlaybackStarted() {
+        playbackStarted = true;
+        markPlaybackProgress();
     }
 
     function attachHlsJs() {
@@ -454,6 +462,8 @@ function createStreamPlayer(stream) {
         video.load();
         lastPlaybackTime = null;
         lastProgressAt = Date.now();
+        startupStartedAt = Date.now();
+        playbackStarted = false;
     }
 
     function rebuild() {
@@ -515,10 +525,10 @@ function createStreamPlayer(stream) {
         }
     }
 
-    video.addEventListener('playing', markPlaybackProgress);
+    video.addEventListener('playing', markPlaybackStarted);
     video.addEventListener('timeupdate', () => {
         if (video.currentTime !== lastPlaybackTime) {
-            markPlaybackProgress();
+            markPlaybackStarted();
         }
     });
     video.addEventListener('error', () => {
@@ -552,11 +562,19 @@ function createStreamPlayer(stream) {
 
         if (!playbackAllowed || serverState !== 'active') return;
 
-        const playbackStalled = (
-            video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
-            || Date.now() - lastProgressAt > PLAYER_STALL_TIMEOUT_MS
+        const now = Date.now();
+        const startupTimedOut = (
+            !playbackStarted
+            && now - startupStartedAt > PLAYER_STARTUP_TIMEOUT_MS
         );
-        if (playbackStalled) {
+        const playbackStalled = (
+            playbackStarted
+            && now - lastProgressAt > PLAYER_STALL_TIMEOUT_MS
+        );
+
+        if (startupTimedOut) {
+            scheduleRecovery('active stream did not start');
+        } else if (playbackStalled) {
             scheduleRecovery('active stream is not advancing');
         } else if (video.paused) {
             video.play().catch(() => {});
