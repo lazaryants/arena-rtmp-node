@@ -39,6 +39,8 @@ class InstallerTests(unittest.TestCase):
                 target / "logrotate/arena-rtmp-node": 0o644,
                 target / "mediamtx": 0o755,
                 target / "mediamtx/mediamtx.yml.example": 0o644,
+                target / "scripts/render_mediamtx_compat.py": 0o755,
+                target / "systemd/arena-mediamtx-ingress.service": 0o644,
                 target / "systemd/mediamtx.service": 0o644,
                 target / "web": 0o755,
                 target / "scripts": 0o755,
