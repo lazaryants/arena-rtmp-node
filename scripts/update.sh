@@ -13,6 +13,7 @@ readonly SERVICES=(
 )
 readonly OPTIONAL_UNITS=(
     mediamtx.service
+    arena-mediamtx-ingress.service
 )
 readonly MANAGED_DIRECTORIES=(
     app docs legacy logrotate mediamtx nginx scripts systemd tests web
@@ -51,8 +52,8 @@ Options:
   -h, --help             Show this help
 
 The updater does not modify Nginx, DNS, TLS, HLS media, logs, runtime PID files
-or the live MediaMTX configuration. It installs the packaged MediaMTX unit but
-does not stop, start or restart MediaMTX.
+or the live MediaMTX configuration. It installs both packaged MediaMTX units but does not stop, start or restart
+either MediaMTX process.
 It does not update Python dependencies; requirements must already be satisfied.
 EOF
 }
