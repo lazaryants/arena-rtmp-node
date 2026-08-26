@@ -1,28 +1,71 @@
 # MediaMTX gateway
 
-MediaMTX is the optional ingress and HLS gateway for paths selected in the
-private Nginx render profile and in `node.env`.
+Production uses two MediaMTX processes while preserving every existing public
+camera URL.
 
-- legacy Nginx RTMP remains on TCP 1935;
-- MediaMTX RTMP uses TCP 19350;
-- MediaMTX SRT uses UDP 8890;
-- HLS, API and metrics listen on loopback only;
-- a path accepts RTMP or SRT, but never two publishers simultaneously.
+## Processes and ports
 
-`mediamtx.yml.example` contains no production secret. For a new node, copy it
-to `/etc/mediamtx/mediamtx.yml`, replace the `CHANGE_ME` password, set
-ownership to `root:mediamtx` and mode 0640, then validate before starting the
-service.
+| Component | Listener | Purpose |
+|---|---:|---|
+| `arena-mediamtx-ingress.service` | TCP 1935 | Compatibility ingress for `placeN/streamN?key=...` |
+| `mediamtx.service` | TCP 19350 | Canonical RTMP gateway |
+| `mediamtx.service` | UDP 8890 | Canonical SRT gateway |
+| main MediaMTX HLS | 127.0.0.1:8888 | HLS consumed by Nginx |
+| main MediaMTX API | 127.0.0.1:9997 | Health and stream metrics |
+| main MediaMTX metrics | 127.0.0.1:9998 | Prometheus-compatible metrics |
+| compatibility API | 127.0.0.1:19996 | Local diagnostics only |
 
-The general project updater installs the packaged systemd unit but deliberately
-does not copy or replace the live MediaMTX configuration and does not restart
-MediaMTX. This prevents an application-only update from interrupting publishers.
+The public compatibility process accepts the legacy path
+`placeN/streamN`. It sends the original query string to
+`http://127.0.0.1:8080/mediamtx-auth`. The Arena auth service validates the
+existing per-place key and stream name. An accepted stream is forwarded to the
+canonical `placeN` path on the main MediaMTX instance.
 
-Initial migration policy:
+The internal forwarding account is restricted to localhost and to
+`place1` through `place16`. Its password is stored as SHA-256 in the main
+configuration and as protected plaintext in the compatibility configuration.
 
-1. keep places 1-8 on Nginx RTMP and file-backed HLS;
-2. prepare MediaMTX paths 1-16 and authenticated RTMP/SRT publishing;
-3. move one place at a time;
-4. add a migrated place to both `mediamtx_hls_places` in the Nginx render
-   profile and `ARENA_RTMP_MEDIAMTX_HLS_PLACES` in `node.env`;
-5. retain the old RTMP worker until the SRT path, HLS and monitoring are checked.
+## Private configuration generation
+
+The repository never contains live credentials. Prepare a private main
+configuration first and replace `CHANGE_ME_STRONG_MEDIA_PASSWORD` with the
+publisher password used by trusted direct RTMP/SRT senders.
+
+Then render the compatibility pair into a protected staging directory:
+
+```bash
+install -d -m 700 /root/arena-mediamtx-private
+install -m 600 \
+  mediamtx/mediamtx.yml.example \
+  /root/arena-mediamtx-private/source.yml
+
+# Edit source.yml without printing its password.
+editor /root/arena-mediamtx-private/source.yml
+
+stage="$(mktemp -d /root/arena-mediamtx-render.XXXXXX)"
+chmod 700 "${stage}"
+
+python3 scripts/render_mediamtx_compat.py \
+  --main-config /root/arena-mediamtx-private/source.yml \
+  --output-dir "${stage}"
+```
+
+The renderer creates:
+
+- `mediamtx.yml`: main configuration with the hashed localhost-only account;
+- `ingress.yml`: compatibility configuration containing the matching internal
+  password;
+- mode `600` for both files and mode `700` for the output directory;
+- no credential output on stdout or stderr.
+
+Never commit either rendered file.
+
+## Lifecycle policy
+
+The normal project updater installs the packaged unit definitions, but it does
+not copy `/etc/mediamtx/*.yml` and does not stop, start or restart either
+MediaMTX process. Media configuration changes require an explicit maintenance
+operation with an independent backup and rollback.
+
+See [MediaMTX deployment](../docs/MEDIAMTX_DEPLOYMENT.md) and
+[operations](../docs/OPERATIONS.md).
