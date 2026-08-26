@@ -416,7 +416,10 @@ def merge_mediamtx_snapshot(rtmp, hls, mediamtx, place_ids):
     hls["counts"] = counts
 
     return {
-        "reachable": rtmp.get("reachable", False),
+        "reachable": bool(
+            rtmp.get("reachable", False)
+            or mediamtx.get("reachable", False)
+        ),
         "active_streams": sum(
             application.get("streams", 0)
             for application in applications.values()
@@ -473,20 +476,46 @@ def health_snapshot(settings):
         "ok": settings.hls_root.is_dir(),
     }
 
-    try:
-        rtmp = rtmp_snapshot(settings.rtmp_stat_url)
-        checks["rtmp_stat"] = {"ok": rtmp["reachable"]}
-    except (OSError, ValueError, ET.ParseError):
-        checks["rtmp_stat"] = {"ok": False}
+    mediamtx_place_ids = set(
+        settings.mediamtx_hls_places
+    )
+    all_place_ids = set(range(1, 17))
 
-    if settings.mediamtx_hls_places:
+    # nginx-rtmp remains mandatory only while at least one
+    # public place has not yet migrated to MediaMTX.
+    nginx_rtmp_required = not all_place_ids.issubset(
+        mediamtx_place_ids
+    )
+
+    if nginx_rtmp_required:
+        try:
+            rtmp = rtmp_snapshot(
+                settings.rtmp_stat_url
+            )
+            checks["rtmp_stat"] = {
+                "ok": rtmp["reachable"],
+            }
+        except (
+            OSError,
+            ValueError,
+            ET.ParseError,
+        ):
+            checks["rtmp_stat"] = {"ok": False}
+
+    if mediamtx_place_ids:
         try:
             mediamtx = mediamtx_snapshot(
                 settings.mediamtx_api_url,
                 settings.mediamtx_hls_places,
             )
-            checks["mediamtx_api"] = {"ok": mediamtx["reachable"]}
-        except (OSError, ValueError, json.JSONDecodeError):
+            checks["mediamtx_api"] = {
+                "ok": mediamtx["reachable"],
+            }
+        except (
+            OSError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
             checks["mediamtx_api"] = {"ok": False}
 
     return {

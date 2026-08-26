@@ -3,6 +3,7 @@ import os
 import tempfile
 import time
 import unittest
+from dataclasses import replace
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import patch
@@ -91,6 +92,67 @@ class MonitoringTests(unittest.TestCase):
         self.assertEqual(health["status"], "ok")
         self.assertEqual(health["checks"]["config"]["schema_version"], 2)
         self.assertTrue(all(check["ok"] for check in health["checks"].values()))
+
+    @patch("app.monitoring.mediamtx_snapshot")
+    @patch("app.monitoring.rtmp_snapshot")
+    def test_full_mediamtx_health_does_not_require_nginx_stat(
+        self,
+        mocked_rtmp,
+        mocked_mediamtx,
+    ):
+        settings = replace(
+            self.settings,
+            mediamtx_hls_places=tuple(
+                range(1, 17)
+            ),
+        )
+        mocked_mediamtx.return_value = {
+            "reachable": True,
+        }
+
+        health = health_snapshot(settings)
+
+        self.assertEqual(health["status"], "ok")
+        self.assertTrue(
+            health["checks"]["mediamtx_api"]["ok"]
+        )
+        self.assertNotIn(
+            "rtmp_stat",
+            health["checks"],
+        )
+        mocked_rtmp.assert_not_called()
+
+    @patch("app.monitoring.mediamtx_snapshot")
+    @patch("app.monitoring.rtmp_snapshot")
+    def test_partial_mediamtx_health_still_requires_nginx_stat(
+        self,
+        mocked_rtmp,
+        mocked_mediamtx,
+    ):
+        settings = replace(
+            self.settings,
+            mediamtx_hls_places=(1, 2, 3),
+        )
+        mocked_mediamtx.return_value = {
+            "reachable": True,
+        }
+        mocked_rtmp.side_effect = OSError(
+            "nginx stat unavailable"
+        )
+
+        health = health_snapshot(settings)
+
+        self.assertEqual(
+            health["status"],
+            "degraded",
+        )
+        self.assertFalse(
+            health["checks"]["rtmp_stat"]["ok"]
+        )
+        self.assertTrue(
+            health["checks"]["mediamtx_api"]["ok"]
+        )
+        mocked_rtmp.assert_called_once()
 
     def test_rtmp_metrics_are_server_side_and_do_not_expose_identity(self):
         root = ET.fromstring("""
@@ -340,7 +402,7 @@ class MonitoringTests(unittest.TestCase):
             },
         }
         rtmp = {
-            "reachable": True,
+            "reachable": False,
             "applications": {
                 "place1": {
                     "streams": 1,
@@ -372,6 +434,7 @@ class MonitoringTests(unittest.TestCase):
             {"place1", "place9"},
         )
         self.assertEqual(merged["active_streams"], 2)
+        self.assertTrue(merged["reachable"])
         self.assertEqual(hls["places"]["9"]["state"], "active")
         self.assertEqual(hls["places"]["10"]["state"], "no_signal")
         self.assertEqual(hls["counts"]["active"], 2)
