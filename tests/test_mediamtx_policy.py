@@ -51,8 +51,9 @@ class MediaMtxPolicyTests(unittest.TestCase):
             PROJECT_ROOT / "scripts/update.sh"
         ).read_text(encoding="utf-8")
 
+        self.assertIn("mediamtx.service", updater)
         self.assertIn(
-            'readonly OPTIONAL_UNITS=(\n    mediamtx.service\n)',
+            "arena-mediamtx-ingress.service",
             updater,
         )
         services_block = updater.split(
@@ -65,6 +66,30 @@ class MediaMtxPolicyTests(unittest.TestCase):
             updater,
         )
         self.assertNotIn("/etc/mediamtx/mediamtx.yml", updater)
+        self.assertNotIn("/etc/mediamtx/ingress.yml", updater)
+
+
+    def test_compatibility_ingress_unit_is_hardened(self):
+        unit = (
+            PROJECT_ROOT
+            / "systemd/arena-mediamtx-ingress.service"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("User=mediamtx", unit)
+        self.assertIn(
+            "ExecStart=/usr/local/bin/mediamtx "
+            "/etc/mediamtx/ingress.yml",
+            unit,
+        )
+        self.assertIn(
+            "Requires=mediamtx.service "
+            "arena-rtmp-auth.service",
+            unit,
+        )
+        self.assertIn("NoNewPrivileges=true", unit)
+        self.assertIn("ProtectSystem=strict", unit)
+        self.assertIn("ProtectHome=true", unit)
+
 
 
 if __name__ == "__main__":
