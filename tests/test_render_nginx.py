@@ -150,5 +150,40 @@ class RenderNginxTests(unittest.TestCase):
                 render(profile_path, root / "output")
 
 
+    def test_full_mediamtx_mode_disables_nginx_rtmp(self):
+        profile = self.profile()
+        profile["rtmp_enabled"] = False
+        profile["mediamtx_hls_places"] = list(range(1, 17))
+        temporary_directory, outputs = self.render_profile(profile)
+        self.addCleanup(temporary_directory.cleanup)
+
+        rtmp = outputs["arena-rtmp.conf"]
+        stat = outputs["arena-rtmp-stat-local.conf"]
+        http = outputs["arena-rtmp-http.conf"]
+
+        self.assertNotIn("rtmp {", rtmp)
+        self.assertNotIn("application place", rtmp)
+        self.assertIn("arena-mediamtx-ingress.service", rtmp)
+        self.assertNotIn("rtmp_stat", stat)
+        self.assertEqual(
+            http.count("location ^~ /hls/place"),
+            16,
+        )
+
+    def test_rtmp_enabled_must_be_boolean(self):
+        profile = self.profile()
+        profile["rtmp_enabled"] = "false"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            profile_path = root / "profile.json"
+            profile_path.write_text(
+                json.dumps(profile),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "boolean"):
+                render(profile_path, root / "output")
+
+
+
 if __name__ == "__main__":
     unittest.main()
