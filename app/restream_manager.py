@@ -836,12 +836,9 @@ def get_fields():
     for field_id, field_data in config.get('fields', {}).items():
         urls = field_data.get('restream_urls', [])
         
-        # Получаем stream key (по умолчанию stream{id})
-        stream_key = field_data.get('stream_key', f'stream{field_id}')
-        
         fields[int(field_id)] = {
             'name': field_data.get('name', f'Field {field_id}'),
-            'source': f'{SETTINGS.local_rtmp_origin}/place{field_id}/{stream_key}',
+            'source': f'{SETTINGS.local_rtmp_origin}/place{field_id}',
             'urls': urls,
             'pid_files': [str(SETTINGS.pid_file(field_id, i)) for i in range(len(urls))],
             'log_files': [str(SETTINGS.log_file(field_id, i)) for i in range(len(urls))]

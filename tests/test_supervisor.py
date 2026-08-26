@@ -57,13 +57,26 @@ class SupervisorValidationTests(unittest.TestCase):
     def setUp(self):
         self.supervisor = RestreamSupervisor()
 
-    def test_source_uses_local_rtmp_without_hls_latency(self):
-        settings = mock.Mock(local_rtmp_origin="rtmp://127.0.0.1")
+    def test_source_uses_local_mediamtx_without_stream_key(self):
+        settings = mock.Mock(
+            local_rtmp_origin="rtmp://127.0.0.1:19350",
+        )
         supervisor = RestreamSupervisor(settings)
 
         self.assertEqual(
-            supervisor.source_url(6, "court-six"),
-            "rtmp://127.0.0.1/place6/court-six",
+            supervisor.source_url(6, "stream6"),
+            "rtmp://127.0.0.1:19350/place6",
+        )
+
+    def test_source_mapping_supports_future_places(self):
+        settings = mock.Mock(
+            local_rtmp_origin="rtmp://127.0.0.1:19350",
+        )
+        supervisor = RestreamSupervisor(settings)
+
+        self.assertEqual(
+            supervisor.source_url(16, "stream16"),
+            "rtmp://127.0.0.1:19350/place16",
         )
 
     def test_ffmpeg_audio_modes_copy_video_without_transcoding(self):

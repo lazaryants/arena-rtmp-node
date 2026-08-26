@@ -71,7 +71,7 @@ class Settings:
     local_rtmp_origin: str = field(
         default_factory=lambda: os.environ.get(
             "ARENA_RTMP_LOCAL_RTMP_ORIGIN",
-            "rtmp://127.0.0.1",
+            "rtmp://127.0.0.1:19350",
         ).rstrip("/"),
     )
     rtmp_stat_url: str = field(
