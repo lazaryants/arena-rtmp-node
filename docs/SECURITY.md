@@ -16,3 +16,25 @@
 - Manager, supervisor и auth работают без root от отдельного пользователя `arena-rtmp` с systemd sandbox и пустым capability set.
 
 При обнаружении уязвимости не публикуйте ключи, URL назначения или журналы в issue. Свяжитесь с владельцем репозитория приватно.
+
+
+## MediaMTX compatibility boundary
+
+The public MediaMTX process accepts only exact `place1/stream1` through
+`place16/stream16` paths and delegates every RTMP publish decision to the
+loopback Arena auth service. Existing per-place keys remain in the protected
+Arena state file.
+
+The compatibility forwarder uses a separate internal account:
+
+- the main configuration stores its SHA-256 value;
+- the ingress configuration stores the matching plaintext password;
+- the account is restricted to localhost and canonical `place1` through
+  `place16`;
+- `/etc/mediamtx/ingress.yml` must be `root:mediamtx` with mode `640`;
+- neither rendered MediaMTX file may be committed or printed.
+
+MediaMTX API, HLS origin and metrics are bound to loopback. Nginx exposes only
+the intended HLS routes. The normal updater installs unit definitions but never
+copies private MediaMTX configuration and never restarts either MediaMTX
+process.
