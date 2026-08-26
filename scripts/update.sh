@@ -11,8 +11,12 @@ readonly SERVICES=(
     arena-rtmp-auth.service
     arena-restream-manager.service
 )
+readonly OPTIONAL_UNITS=(
+    mediamtx.service
+    arena-mediamtx-ingress.service
+)
 readonly MANAGED_DIRECTORIES=(
-    app docs legacy logrotate nginx scripts systemd tests web
+    app docs legacy logrotate mediamtx nginx scripts systemd tests web
 )
 readonly MANAGED_FILES=(
     .gitignore README.md requirements.txt
@@ -47,7 +51,9 @@ Options:
   --confirm UPDATE       Required literal confirmation for apply
   -h, --help             Show this help
 
-The updater does not modify Nginx, DNS, TLS, HLS media, logs or runtime PID files.
+The updater does not modify Nginx, DNS, TLS, HLS media, logs, runtime PID files
+or the live MediaMTX configuration. It installs both packaged MediaMTX units but does not stop, start or restart
+either MediaMTX process.
 It does not update Python dependencies; requirements must already be satisfied.
 EOF
 }
@@ -185,7 +191,7 @@ create_backup() {
         "${BACKUP_DIR}/target"
 
     if [[ "${SKIP_SERVICES}" != "1" ]]; then
-        for unit in "${SERVICES[@]}"; do
+        for unit in "${SERVICES[@]}" "${OPTIONAL_UNITS[@]}"; do
             if [[ -e "${SYSTEMD_DIR}/${unit}" ]]; then
                 cp -a -- "${SYSTEMD_DIR}/${unit}" "${BACKUP_DIR}/systemd/"
             fi
@@ -234,6 +240,7 @@ replace_managed_files() {
             "${TARGET}/docs" \
             "${TARGET}/legacy" \
             "${TARGET}/logrotate" \
+            "${TARGET}/mediamtx" \
             "${TARGET}/nginx" \
             "${TARGET}/scripts" \
             "${TARGET}/systemd" \
@@ -244,7 +251,7 @@ replace_managed_files() {
 
 install_units() {
     local unit
-    for unit in "${SERVICES[@]}"; do
+    for unit in "${SERVICES[@]}" "${OPTIONAL_UNITS[@]}"; do
         install -m 0644 -- \
             "${TARGET}/systemd/${unit}" \
             "${SYSTEMD_DIR}/${unit}"
@@ -293,7 +300,7 @@ restore_backup() {
         "${TARGET}/.arena-rtmp-node-managed"
 
     if [[ "${SKIP_SERVICES}" != "1" ]]; then
-        for unit in "${SERVICES[@]}"; do
+        for unit in "${SERVICES[@]}" "${OPTIONAL_UNITS[@]}"; do
             if [[ -e "${BACKUP_DIR}/systemd/${unit}" ]]; then
                 install -m 0644 -- \
                     "${BACKUP_DIR}/systemd/${unit}" \

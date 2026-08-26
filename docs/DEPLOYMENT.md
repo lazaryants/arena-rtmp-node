@@ -1,5 +1,10 @@
 # Развёртывание
 
+> The complete two-process MediaMTX production procedure is documented in
+> [MEDIAMTX_DEPLOYMENT.md](MEDIAMTX_DEPLOYMENT.md). Routine verification and
+> recovery commands are in [OPERATIONS.md](OPERATIONS.md).
+
+
 Документ фиксирует текущую схему установки. Первичный безопасный installer подготавливает файлы приложения, но не активирует системные конфигурации.
 
 ## Требования

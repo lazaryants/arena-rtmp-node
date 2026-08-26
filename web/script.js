@@ -6,103 +6,41 @@ const streamPlayers = new Map();
 const PLAYER_RETRY_MIN_MS = 1000;
 const PLAYER_RETRY_MAX_MS = 15000;
 const PLAYER_STALL_TIMEOUT_MS = 15000;
+const PLAYER_STARTUP_TIMEOUT_MS = 45000;
 const MOBILE_PLAYBACK_QUERY = '(max-width: 760px), (pointer: coarse)';
-const MOBILE_MAX_ACTIVE_PLAYERS = 2;
-const MOBILE_ROTATION_INTERVAL_MS = 10000;
-const CONSERVE_MOBILE_PLAYBACK = (
-    window.matchMedia(MOBILE_PLAYBACK_QUERY).matches
-    && 'IntersectionObserver' in window
-);
-const mobilePlayerVisibility = new Map();
-let mobileRotationIndex = 0;
-let mobileRotationTimer = null;
+const CONSERVE_MOBILE_PLAYBACK = window.matchMedia(
+    MOBILE_PLAYBACK_QUERY
+).matches;
+const MOBILE_PREVIEW_REFRESH_MS = 2000;
+const mobilePlayerControls = new Map();
+let activeMobilePlayerId = null;
 
-function mobilePlaybackCandidates() {
-    return [...mobilePlayerVisibility.entries()]
-        .filter(([, state]) => state.ratio >= 0.1 && state.serverActive)
-        .sort((left, right) => Number(left[0]) - Number(right[0]));
-}
-
-function rebalanceMobilePlayback() {
-    const candidates = mobilePlaybackCandidates();
-    const allowed = new Set();
-
-    if (candidates.length) {
-        mobileRotationIndex %= candidates.length;
-        for (
-            let offset = 0;
-            offset < Math.min(MOBILE_MAX_ACTIVE_PLAYERS, candidates.length);
-            offset += 1
-        ) {
-            allowed.add(
-                candidates[
-                    (mobileRotationIndex + offset) % candidates.length
-                ][0]
-            );
-        }
-    }
-
-    mobilePlayerVisibility.forEach((state, playerId) => {
-        state.setAllowed(allowed.has(playerId));
+function selectMobilePlayer(playerId) {
+    activeMobilePlayerId = playerId;
+    mobilePlayerControls.forEach((control, id) => {
+        control.setAllowed(id === playerId);
     });
 }
 
-function advanceMobilePlayback() {
-    const candidates = mobilePlaybackCandidates();
-    if (candidates.length > MOBILE_MAX_ACTIVE_PLAYERS) {
-        mobileRotationIndex = (
-            mobileRotationIndex + MOBILE_MAX_ACTIVE_PLAYERS
-        ) % candidates.length;
-    } else {
-        mobileRotationIndex = 0;
-    }
-    rebalanceMobilePlayback();
-}
-
-function ensureMobileRotationTimer() {
-    if (mobileRotationTimer !== null) return;
-    mobileRotationTimer = window.setInterval(
-        advanceMobilePlayback,
-        MOBILE_ROTATION_INTERVAL_MS,
+function toggleMobilePlayer(playerId) {
+    selectMobilePlayer(
+        activeMobilePlayerId === playerId ? null : playerId
     );
 }
 
-function updateMobilePlayerVisibility(playerId, ratio, setAllowed) {
-    const previous = mobilePlayerVisibility.get(playerId);
-    mobilePlayerVisibility.set(playerId, {
-        ratio,
-        setAllowed,
-        serverActive: previous?.serverActive || false,
-    });
-    ensureMobileRotationTimer();
-}
-
-function updateMobilePlayerServerState(playerId, serverActive) {
-    const state = mobilePlayerVisibility.get(playerId);
-    if (!state) return;
-    state.serverActive = serverActive;
-    rebalanceMobilePlayback();
-}
-
-function prioritizeMobilePlayer(playerId) {
-    const candidates = mobilePlaybackCandidates();
-    const selectedIndex = candidates.findIndex(([id]) => id === playerId);
-    if (selectedIndex < 0) return;
-    mobileRotationIndex = selectedIndex;
-    rebalanceMobilePlayback();
+function registerMobilePlayer(playerId, setAllowed) {
+    mobilePlayerControls.set(playerId, {setAllowed});
 }
 
 function removeMobilePlayer(playerId) {
-    mobilePlayerVisibility.delete(playerId);
-    if (!mobilePlayerVisibility.size && mobileRotationTimer !== null) {
-        window.clearInterval(mobileRotationTimer);
-        mobileRotationTimer = null;
-        mobileRotationIndex = 0;
+    mobilePlayerControls.delete(playerId);
+    if (activeMobilePlayerId === playerId) {
+        activeMobilePlayerId = null;
     }
-    rebalanceMobilePlayback();
 }
 
 const MONITOR_LAYOUT_KEY = 'arena-monitor-columns';
+const MONITOR_MOBILE_LAYOUT_KEY = 'arena-monitor-mobile-columns';
 const MONITOR_DETAILS_KEY = 'arena-monitor-details-visible';
 
 function setMonitorDetailsVisible(visible) {
@@ -133,13 +71,25 @@ function setupMonitorDetails() {
 }
 
 function setMonitorColumns(value) {
-    const columns = ['2', '3', '4'].includes(String(value))
+    const allowed = CONSERVE_MOBILE_PLAYBACK
+        ? ['1', '2']
+        : ['2', '3', '4'];
+    const fallback = CONSERVE_MOBILE_PLAYBACK ? '1' : '4';
+    const columns = allowed.includes(String(value))
         ? String(value)
-        : '4';
+        : fallback;
+    const storageKey = CONSERVE_MOBILE_PLAYBACK
+        ? MONITOR_MOBILE_LAYOUT_KEY
+        : MONITOR_LAYOUT_KEY;
     const grid = document.getElementById('streamsGrid');
     if (!grid) return;
 
-    grid.classList.remove('columns-2', 'columns-3', 'columns-4');
+    grid.classList.remove(
+        'columns-1',
+        'columns-2',
+        'columns-3',
+        'columns-4'
+    );
     grid.classList.add(`columns-${columns}`);
 
     document.querySelectorAll('.layout-switcher button').forEach(button => {
@@ -149,7 +99,7 @@ function setMonitorColumns(value) {
         );
     });
 
-    localStorage.setItem(MONITOR_LAYOUT_KEY, columns);
+    localStorage.setItem(storageKey, columns);
 }
 
 function setupMonitorLayout() {
@@ -158,7 +108,10 @@ function setupMonitorLayout() {
             setMonitorColumns(button.dataset.columns);
         });
     });
-    setMonitorColumns(localStorage.getItem(MONITOR_LAYOUT_KEY) || '4');
+    const storageKey = CONSERVE_MOBILE_PLAYBACK
+        ? MONITOR_MOBILE_LAYOUT_KEY
+        : MONITOR_LAYOUT_KEY;
+    setMonitorColumns(localStorage.getItem(storageKey));
 }
 
 function getPlaceMetrics(prefix) {
@@ -286,6 +239,21 @@ function getLatencyColorClass(value) {
     return 'tech-value error';
 }
 
+function getHlsFrameRate(hls) {
+    const levels = hls?.levels || [];
+    const level = levels[hls?.currentLevel] || levels[0];
+    const frameRate = level?.frameRate;
+    return Number.isFinite(frameRate) && frameRate > 0 ? frameRate : null;
+}
+
+function getSegmentColorClass(value) {
+    if (value >= 1.5 && value <= 6) return 'tech-value good';
+    if ((value >= 1 && value < 1.5) || (value > 6 && value <= 10)) {
+        return 'tech-value warning';
+    }
+    return 'tech-value error';
+}
+
 function updateTechInfo(stream, hls, video) {
     const p = stream.prefix;
     const { source, hls: serverHls } = getPlaceMetrics(p);
@@ -293,12 +261,13 @@ function updateTechInfo(stream, hls, video) {
     const sourceAudio = source?.audio;
 
     setMetric(p, 'resolution', sourceVideo?.resolution?.replace('x', '×'));
+    const sourceFps = Number.isFinite(sourceVideo?.source_fps)
+        ? sourceVideo.source_fps
+        : getHlsFrameRate(hls);
     setMetric(
         p,
         'fps',
-        Number.isFinite(sourceVideo?.source_fps)
-            ? `${sourceVideo.source_fps.toFixed(1)} fps`
-            : '-'
+        Number.isFinite(sourceFps) ? `${sourceFps.toFixed(1)} fps` : '-'
     );
     setMetric(p, 'bitrate', formatBitrate(source?.input_bitrate_bps));
     setMetric(p, 'codec', formatVideoCodec(sourceVideo));
@@ -323,20 +292,16 @@ function updateTechInfo(stream, hls, video) {
             : 'tech-value'
     );
     
-    // Keyframe
+    // Duration of one HLS media fragment, distinct from end-to-end latency.
     const kfEl = document.getElementById(`keyframe${p}`);
     if (kfEl) {
-        if (hls && hls.levels && hls.levels.length > 0) {
-            const level = hls.levels[hls.currentLevel];
-            if (level.details && level.details.fragments && level.details.fragments.length > 0) {
-                const fragment = level.details.fragments[0];
-                const segmentDuration = fragment.duration;
-                kfEl.innerHTML = `${segmentDuration.toFixed(1)}s <span class="tech-hint">(HLS segment)</span>`;
-                kfEl.className = getColorClass(segmentDuration, {good: 4, warning: 6});
-            } else {
-                kfEl.innerHTML = `4.0s <span class="tech-hint">(HLS segment)</span>`;
-                kfEl.className = 'tech-value good';
-            }
+        const levels = hls?.levels || [];
+        const level = levels[hls?.currentLevel] || levels[0];
+        const fragment = level?.details?.fragments?.[0];
+        const segmentDuration = fragment?.duration;
+        if (Number.isFinite(segmentDuration)) {
+            kfEl.textContent = `${segmentDuration.toFixed(1)}s`;
+            kfEl.className = getSegmentColorClass(segmentDuration);
         } else {
             kfEl.textContent = '-';
             kfEl.className = 'tech-value';
@@ -390,20 +355,24 @@ function updateTechInfo(stream, hls, video) {
 
 function createStreamPlayer(stream) {
     const video = document.getElementById(stream.id);
-    if (!video) return null;
+    const preview = document.getElementById(`preview${stream.prefix}`);
+    const toggle = document.getElementById(`liveToggle${stream.prefix}`);
+    const container = video?.parentElement;
+    if (!video || !container) return null;
 
+    const playerId = String(stream.prefix);
     let hls = null;
     let retryTimer = null;
     let watchdogTimer = null;
+    let previewTimer = null;
     let retryDelay = PLAYER_RETRY_MIN_MS;
     let serverState = 'no_signal';
     let lastPlaybackTime = null;
     let lastProgressAt = Date.now();
+    let startupStartedAt = Date.now();
+    let playbackStarted = false;
     let destroyed = false;
     let playbackAllowed = !CONSERVE_MOBILE_PLAYBACK;
-    let viewportObserver = null;
-    let lastPreviewCaptureAt = 0;
-    const previewCanvas = document.createElement('canvas');
 
     function clearRetry() {
         if (retryTimer !== null) {
@@ -431,13 +400,23 @@ function createStreamPlayer(stream) {
         retryDelay = PLAYER_RETRY_MIN_MS;
         lastPlaybackTime = video.currentTime;
         lastProgressAt = Date.now();
-        capturePreviewFrame();
+    }
+
+    function markPlaybackStarted() {
+        playbackStarted = true;
+        markPlaybackProgress();
     }
 
     function attachHlsJs() {
         hls = new Hls({
+            // Eight simultaneous 1080p streams otherwise retain minutes of
+            // decoded MSE history in Chromium. Keep a small live window so
+            // obsolete MediaMTX fMP4 segments are evicted before they expire.
             liveSyncDurationCount: 3,
-            liveMaxLatencyDurationCount: 10,
+            liveMaxLatencyDurationCount: 6,
+            maxBufferLength: 12,
+            maxMaxBufferLength: 20,
+            backBufferLength: 8,
             enableWorker: true
         });
 
@@ -445,9 +424,7 @@ function createStreamPlayer(stream) {
             markPlaybackProgress();
             video.play().catch(() => {});
         });
-
         hls.on(Hls.Events.FRAG_LOADED, markPlaybackProgress);
-
         hls.on(Hls.Events.ERROR, (event, data) => {
             if (!data.fatal) return;
 
@@ -462,7 +439,6 @@ function createStreamPlayer(stream) {
                     );
                 }
             }
-
             scheduleRecovery(data.details || data.type || 'fatal HLS error');
         });
 
@@ -476,50 +452,18 @@ function createStreamPlayer(stream) {
         video.play().catch(() => {});
     }
 
-    function capturePreviewFrame() {
-        if (
-            !CONSERVE_MOBILE_PLAYBACK
-            || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
-            || !video.videoWidth
-            || Date.now() - lastPreviewCaptureAt < 2000
-        ) {
-            return;
-        }
-
-        const previewWidth = Math.min(video.videoWidth, 640);
-        const previewHeight = Math.max(
-            1,
-            Math.round(previewWidth * video.videoHeight / video.videoWidth),
-        );
-        previewCanvas.width = previewWidth;
-        previewCanvas.height = previewHeight;
-
-        try {
-            const context = previewCanvas.getContext('2d');
-            context.drawImage(video, 0, 0, previewWidth, previewHeight);
-            video.poster = previewCanvas.toDataURL('image/jpeg', 0.72);
-            video.parentElement.dataset.previewLabel = 'Tap to refresh';
-            lastPreviewCaptureAt = Date.now();
-        } catch (error) {
-            console.warn(
-                `Player ${stream.prefix}: preview capture failed`,
-                error,
-            );
-        }
-    }
-
     function releaseMedia() {
-        capturePreviewFrame();
         if (hls) {
             hls.destroy();
             hls = null;
         }
-
         video.pause();
         video.removeAttribute('src');
         video.load();
         lastPlaybackTime = null;
         lastProgressAt = Date.now();
+        startupStartedAt = Date.now();
+        playbackStarted = false;
     }
 
     function rebuild() {
@@ -534,14 +478,42 @@ function createStreamPlayer(stream) {
         }
     }
 
+    function refreshPreview() {
+        if (
+            destroyed
+            || !CONSERVE_MOBILE_PLAYBACK
+            || playbackAllowed
+            || !preview
+        ) {
+            return;
+        }
+
+        const url = (
+            `/api/node/previews/${stream.prefix}.jpg`
+            + `?v=${Date.now()}`
+        );
+        const loader = new Image();
+        loader.onload = () => {
+            if (destroyed || playbackAllowed) return;
+            preview.src = url;
+            container.classList.add('mobile-preview-ready');
+        };
+        loader.src = url;
+    }
+
     function setPlaybackAllowed(allowed) {
         if (destroyed || playbackAllowed === allowed) return;
         playbackAllowed = allowed;
         video.controls = allowed;
-        video.parentElement.classList.toggle(
-            'mobile-preview-paused',
-            !allowed,
-        );
+        container.classList.toggle('mobile-live-active', allowed);
+
+        if (toggle) {
+            const label = allowed ? 'Back to preview' : 'Watch live';
+            toggle.textContent = allowed ? '■' : '▶';
+            toggle.setAttribute('aria-label', label);
+            toggle.setAttribute('title', label);
+            toggle.setAttribute('aria-pressed', String(allowed));
+        }
 
         if (allowed) {
             retryDelay = PLAYER_RETRY_MIN_MS;
@@ -549,49 +521,43 @@ function createStreamPlayer(stream) {
         } else {
             clearRetry();
             releaseMedia();
+            refreshPreview();
         }
     }
 
-    video.addEventListener('playing', markPlaybackProgress);
+    video.addEventListener('playing', markPlaybackStarted);
     video.addEventListener('timeupdate', () => {
-        if (video.currentTime !== lastPlaybackTime) {
-            markPlaybackProgress();
+        if (
+            video.currentTime > 0
+            && video.currentTime !== lastPlaybackTime
+        ) {
+            markPlaybackStarted();
         }
     });
     video.addEventListener('error', () => {
         scheduleRecovery('video element error');
     });
-    video.addEventListener('stalled', () => {
-        scheduleRecovery('video stalled');
-    });
+    // Chrome emits "stalled" while Media Source Extensions are still
+    // filling the initial live buffer. The watchdog below verifies actual
+    // playback progress for 15 seconds before rebuilding the player.
+    // Rebuilding immediately here creates an endless startup loop in Chrome.
 
     if (CONSERVE_MOBILE_PLAYBACK) {
-        updateMobilePlayerVisibility(
-            String(stream.prefix),
-            0,
-            setPlaybackAllowed,
-        );
-        viewportObserver = new IntersectionObserver(entries => {
-            entries.forEach(entry => {
-                updateMobilePlayerVisibility(
-                    String(stream.prefix),
-                    entry.isIntersecting ? entry.intersectionRatio : 0,
-                    setPlaybackAllowed,
-                );
-            });
-            rebalanceMobilePlayback();
-        }, {
-            threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
-        });
-        viewportObserver.observe(video);
-        video.parentElement.dataset.previewLabel = 'Waiting for preview';
-        video.parentElement.classList.add('mobile-preview-paused');
+        container.classList.add('mobile-preview-mode');
         video.controls = false;
-        video.parentElement.addEventListener('click', () => {
-            if (!playbackAllowed) {
-                prioritizeMobilePlayer(String(stream.prefix));
+        registerMobilePlayer(playerId, setPlaybackAllowed);
+        toggle?.addEventListener('click', () => {
+            if (serverState === 'active' || playbackAllowed) {
+                toggleMobilePlayer(playerId);
             }
         });
+        refreshPreview();
+        previewTimer = window.setInterval(
+            refreshPreview,
+            MOBILE_PREVIEW_REFRESH_MS,
+        );
+    } else {
+        rebuild();
     }
 
     watchdogTimer = setInterval(() => {
@@ -599,18 +565,24 @@ function createStreamPlayer(stream) {
 
         if (!playbackAllowed || serverState !== 'active') return;
 
-        const playbackStalled = (
-            video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
-            || Date.now() - lastProgressAt > PLAYER_STALL_TIMEOUT_MS
+        const now = Date.now();
+        const startupTimedOut = (
+            !playbackStarted
+            && now - startupStartedAt > PLAYER_STARTUP_TIMEOUT_MS
         );
-        if (playbackStalled) {
+        const playbackStalled = (
+            playbackStarted
+            && now - lastProgressAt > PLAYER_STALL_TIMEOUT_MS
+        );
+
+        if (startupTimedOut) {
+            scheduleRecovery('active stream did not start');
+        } else if (playbackStalled) {
             scheduleRecovery('active stream is not advancing');
         } else if (video.paused) {
             video.play().catch(() => {});
         }
     }, 2000);
-
-    rebuild();
 
     return {
         setServerState(nextState) {
@@ -619,26 +591,37 @@ function createStreamPlayer(stream) {
                 && serverState !== 'active'
             );
             serverState = nextState;
-            if (CONSERVE_MOBILE_PLAYBACK) {
-                updateMobilePlayerServerState(
-                    String(stream.prefix),
-                    nextState === 'active',
-                );
+
+            if (
+                CONSERVE_MOBILE_PLAYBACK
+                && playbackAllowed
+                && nextState !== 'active'
+            ) {
+                selectMobilePlayer(null);
             }
-            if (becameActive) {
-                clearRetry();
+            if (toggle) {
+                toggle.disabled = nextState !== 'active';
+            }
+            // Do not rebuild an already attached player on the first
+            // metrics transition from no_signal to active. The HLS instance
+            // is already loading, and its fatal-error retry path remains
+            // responsible for genuine recovery.
+            if (
+                becameActive
+                && playbackAllowed
+                && hls === null
+                && retryTimer === null
+            ) {
                 retryDelay = PLAYER_RETRY_MIN_MS;
-                scheduleRecovery('stream became active');
+                rebuild();
             }
         },
         destroy() {
             destroyed = true;
             clearRetry();
             if (watchdogTimer !== null) clearInterval(watchdogTimer);
-            if (viewportObserver) viewportObserver.disconnect();
-            if (CONSERVE_MOBILE_PLAYBACK) {
-                removeMobilePlayer(String(stream.prefix));
-            }
+            if (previewTimer !== null) clearInterval(previewTimer);
+            if (CONSERVE_MOBILE_PLAYBACK) removeMobilePlayer(playerId);
             releaseMedia();
         }
     };
@@ -793,7 +776,18 @@ function renderStreams() {
                 </div>
                 <div class="status offline" id="${stream.statusId}">Offline</div>
             </div>
-            <div class="video-container"><video id="${stream.id}" controls autoplay muted playsinline></video></div>
+            <div class="video-container">
+                <img class="mobile-preview-image"
+                     id="preview${stream.prefix}"
+                     alt="${safeName} preview">
+                <video id="${stream.id}" controls autoplay muted playsinline></video>
+                <button class="mobile-live-toggle"
+                        id="liveToggle${stream.prefix}"
+                        type="button"
+                        aria-label="Watch live"
+          title="Watch live"
+          aria-pressed="false">▶</button>
+            </div>
 
             <div class="stream-details">
                 <div class="detail-panel">
@@ -818,9 +812,9 @@ function renderStreams() {
                         <div class="tech-row"><span class="tech-label">Video codec</span><span class="tech-value" id="codec${stream.prefix}">-</span></div>
                         <div class="tech-row"><span class="tech-label">Audio codec</span><span class="tech-value" id="audio${stream.prefix}">-</span></div>
                         <div class="tech-row"><span class="tech-label">Uptime</span><span class="tech-value" id="uptime${stream.prefix}">-</span></div>
-                        <div class="tech-row"><span class="tech-label">RTMP dropped</span><span class="tech-value" id="dropped${stream.prefix}">-</span></div>
-                        <div class="tech-row"><span class="tech-label">Last media</span><span class="tech-value" id="lastupdate${stream.prefix}">-</span></div>
-                        <div class="tech-row"><span class="tech-label">HLS segment</span><span class="tech-value" id="keyframe${stream.prefix}">-</span></div>
+                        <div class="tech-row"><span class="tech-label" title="Frames rejected by the receiving server">Ingest errors</span><span class="tech-value" id="dropped${stream.prefix}">-</span></div>
+                        <div class="tech-row"><span class="tech-label" title="Age of the latest media observed by the server">Signal age</span><span class="tech-value" id="lastupdate${stream.prefix}">-</span></div>
+                        <div class="tech-row"><span class="tech-label" title="Duration of one HLS media fragment; this is not stream latency">HLS segment</span><span class="tech-value" id="keyframe${stream.prefix}">-</span></div>
                         <div class="tech-row"><span class="tech-label">HLS latency</span><span class="tech-value" id="latency${stream.prefix}">-</span></div>
                         <div class="tech-row"><span class="tech-label">Player buffer</span><span class="tech-value" id="buffer${stream.prefix}">-</span></div>
                         <div class="tech-row"><span class="tech-label">Browser dropped</span><span class="tech-value" id="browserdropped${stream.prefix}">-</span></div>

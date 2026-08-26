@@ -34,6 +34,25 @@ class ThemeUiTests(unittest.TestCase):
                     source.index("<style") if "<style" in source else source.index("style.css"),
                 )
 
+    def test_theme_picker_stays_above_monitoring_video(self):
+        monitoring_styles = (
+            PROJECT_ROOT / "web/style.css"
+        ).read_text(encoding="utf-8")
+        application_styles = (
+            PROJECT_ROOT / "app/templates/theme.css"
+        ).read_text(encoding="utf-8")
+        monitoring_html = (
+            PROJECT_ROOT / "web/index.html"
+        ).read_text(encoding="utf-8")
+
+        for styles in (monitoring_styles, application_styles):
+            topbar = styles.split("\n.topbar {", 1)[1].split("}", 1)[0]
+            self.assertIn("position: relative", topbar)
+            self.assertIn("z-index: 2000", topbar)
+            self.assertIn("z-index: 1200", styles)
+
+        self.assertIn("style.css?v=16", monitoring_html)
+
     def test_theme_preference_is_persistent_and_dark_by_default(self):
         source = THEME_SCRIPT.read_text(encoding="utf-8")
 

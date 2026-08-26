@@ -55,10 +55,10 @@ class RestreamSupervisor:
         return field, [url_index]
 
     def source_url(self, field_id, stream_key):
-        """Return the local RTMP source without adding HLS latency."""
+        """Return the local MediaMTX source without HLS latency."""
         return (
             f"{self.settings.local_rtmp_origin}/"
-            f"place{field_id}/{stream_key}"
+            f"place{field_id}"
         )
 
     def ffmpeg_command(self, source, destination, progress_file):

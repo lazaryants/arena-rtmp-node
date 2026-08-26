@@ -60,6 +60,57 @@ class AuthorizePublishTests(unittest.TestCase):
         )
         self.assertEqual(result, (200, "authorized"))
 
+    def test_mediamtx_accepts_existing_public_url(self):
+        result = rtmp_auth.authorize_mediamtx({
+            "action": "publish",
+            "protocol": "rtmp",
+            "path": "place15/stream15",
+            "query": "key=correct-key",
+        })
+        self.assertEqual(
+            result,
+            (
+                200,
+                "authorized",
+                "place15",
+                "stream15",
+            ),
+        )
+
+    def test_mediamtx_rejects_wrong_key(self):
+        result = rtmp_auth.authorize_mediamtx({
+            "action": "publish",
+            "protocol": "rtmp",
+            "path": "place15/stream15",
+            "query": "key=wrong-key",
+        })
+        self.assertEqual(
+            result,
+            (
+                403,
+                "invalid_key",
+                "place15",
+                "stream15",
+            ),
+        )
+
+    def test_mediamtx_rejects_noncanonical_path(self):
+        result = rtmp_auth.authorize_mediamtx({
+            "action": "publish",
+            "protocol": "rtmp",
+            "path": "place15",
+            "query": "key=correct-key",
+        })
+        self.assertEqual(
+            result,
+            (
+                403,
+                "invalid_path",
+                "unknown",
+                "unknown",
+            ),
+        )
+
     def test_rejects_wrong_stream(self):
         result = rtmp_auth.authorize_publish(
             "place15",

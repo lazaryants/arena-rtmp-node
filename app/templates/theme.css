@@ -382,6 +382,8 @@ body {
     margin: 0 auto;
     max-width: 1840px;
     min-height: 64px;
+    position: relative;
+    z-index: 2000;
 }
 
 .brand {

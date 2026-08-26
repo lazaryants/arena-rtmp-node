@@ -3,14 +3,17 @@ import os
 import tempfile
 import time
 import unittest
+from dataclasses import replace
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import patch
 
 from app.monitoring import (
     health_snapshot,
+    merge_mediamtx_snapshot,
     merge_rtmp_snapshot,
     metrics_snapshot,
+    parse_mediamtx_paths,
     parse_rtmp_stat,
 )
 from app.settings import Settings
@@ -89,6 +92,67 @@ class MonitoringTests(unittest.TestCase):
         self.assertEqual(health["status"], "ok")
         self.assertEqual(health["checks"]["config"]["schema_version"], 2)
         self.assertTrue(all(check["ok"] for check in health["checks"].values()))
+
+    @patch("app.monitoring.mediamtx_snapshot")
+    @patch("app.monitoring.rtmp_snapshot")
+    def test_full_mediamtx_health_does_not_require_nginx_stat(
+        self,
+        mocked_rtmp,
+        mocked_mediamtx,
+    ):
+        settings = replace(
+            self.settings,
+            mediamtx_hls_places=tuple(
+                range(1, 17)
+            ),
+        )
+        mocked_mediamtx.return_value = {
+            "reachable": True,
+        }
+
+        health = health_snapshot(settings)
+
+        self.assertEqual(health["status"], "ok")
+        self.assertTrue(
+            health["checks"]["mediamtx_api"]["ok"]
+        )
+        self.assertNotIn(
+            "rtmp_stat",
+            health["checks"],
+        )
+        mocked_rtmp.assert_not_called()
+
+    @patch("app.monitoring.mediamtx_snapshot")
+    @patch("app.monitoring.rtmp_snapshot")
+    def test_partial_mediamtx_health_still_requires_nginx_stat(
+        self,
+        mocked_rtmp,
+        mocked_mediamtx,
+    ):
+        settings = replace(
+            self.settings,
+            mediamtx_hls_places=(1, 2, 3),
+        )
+        mocked_mediamtx.return_value = {
+            "reachable": True,
+        }
+        mocked_rtmp.side_effect = OSError(
+            "nginx stat unavailable"
+        )
+
+        health = health_snapshot(settings)
+
+        self.assertEqual(
+            health["status"],
+            "degraded",
+        )
+        self.assertFalse(
+            health["checks"]["rtmp_stat"]["ok"]
+        )
+        self.assertTrue(
+            health["checks"]["mediamtx_api"]["ok"]
+        )
+        mocked_rtmp.assert_called_once()
 
     def test_rtmp_metrics_are_server_side_and_do_not_expose_identity(self):
         root = ET.fromstring("""
@@ -238,6 +302,142 @@ class MonitoringTests(unittest.TestCase):
             cache,
         )
         self.assertEqual(set(third["applications"]), {"place16"})
+
+
+    def test_mediamtx_paths_use_existing_safe_source_schema(self):
+        rate_cache = {}
+        first = parse_mediamtx_paths(
+            {
+                "items": [{
+                    "name": "place9",
+                    "ready": True,
+                    "onlineTime": "2026-08-23T06:43:25Z",
+                    "source": {"type": "srtConn", "id": "private-id"},
+                    "tracks2": [
+                        {
+                            "codec": "H264",
+                            "codecProps": {
+                                "width": 1920,
+                                "height": 1080,
+                                "profile": "High",
+                                "level": "4",
+                            },
+                        },
+                        {
+                            "codec": "MPEG-4 Audio",
+                            "codecProps": {
+                                "sampleRate": 48000,
+                                "channelCount": 1,
+                            },
+                        },
+                    ],
+                    "readers": [],
+                    "inboundBytes": 1000,
+                    "inboundFramesInError": 0,
+                }],
+            },
+            (9, 10),
+            now=1787467410.0,
+            rate_cache=rate_cache,
+        )
+        second = parse_mediamtx_paths(
+            {
+                "items": [{
+                    "name": "place9",
+                    "ready": True,
+                    "onlineTime": "2026-08-23T06:43:25Z",
+                    "source": {"type": "srtConn", "id": "private-id"},
+                    "tracks2": [
+                        {
+                            "codec": "H264",
+                            "codecProps": {
+                                "width": 1920,
+                                "height": 1080,
+                                "profile": "High",
+                                "level": "4",
+                            },
+                        },
+                        {
+                            "codec": "MPEG-4 Audio",
+                            "codecProps": {
+                                "sampleRate": 48000,
+                                "channelCount": 1,
+                            },
+                        },
+                    ],
+                    "readers": [],
+                    "inboundBytes": 2000,
+                    "inboundFramesInError": 0,
+                }],
+            },
+            (9, 10),
+            now=1787467412.0,
+            rate_cache=rate_cache,
+        )
+
+        stream = second["applications"]["place9"]["stream_metrics"][0]
+        serialized = json.dumps(second)
+        self.assertEqual(first["active_streams"], 1)
+        self.assertEqual(stream["input_bitrate_bps"], 4000)
+        self.assertEqual(stream["video"]["resolution"], "1920x1080")
+        self.assertEqual(stream["video"]["profile"], "High")
+        self.assertEqual(stream["audio"]["codec"], "AAC")
+        self.assertEqual(stream["audio"]["sample_rate_hz"], 48000)
+        self.assertEqual(stream["publishers"], 1)
+        self.assertEqual(stream["publisher_dropped"], 0)
+        self.assertNotIn("private-id", serialized)
+        self.assertNotIn("srtConn", serialized)
+
+    def test_mediamtx_place_overrides_hls_and_keeps_rtmp_places(self):
+        hls = {
+            "counts": {"active": 1, "stale": 0, "no_signal": 15},
+            "places": {
+                str(place_id): {
+                    "state": "active" if place_id == 1 else "no_signal",
+                    "latest_segment_age_seconds": (
+                        1.0 if place_id == 1 else None
+                    ),
+                }
+                for place_id in range(1, 17)
+            },
+        }
+        rtmp = {
+            "reachable": False,
+            "applications": {
+                "place1": {
+                    "streams": 1,
+                    "clients": 1,
+                    "stream_metrics": [{"publishers": 1}],
+                },
+            },
+        }
+        mediamtx = {
+            "reachable": True,
+            "applications": {
+                "place9": {
+                    "streams": 1,
+                    "clients": 1,
+                    "stream_metrics": [{"publishers": 1}],
+                },
+            },
+        }
+
+        merged = merge_mediamtx_snapshot(
+            rtmp,
+            hls,
+            mediamtx,
+            (9, 10),
+        )
+
+        self.assertEqual(
+            set(merged["applications"]),
+            {"place1", "place9"},
+        )
+        self.assertEqual(merged["active_streams"], 2)
+        self.assertTrue(merged["reachable"])
+        self.assertEqual(hls["places"]["9"]["state"], "active")
+        self.assertEqual(hls["places"]["10"]["state"], "no_signal")
+        self.assertEqual(hls["counts"]["active"], 2)
 
 
 if __name__ == "__main__":

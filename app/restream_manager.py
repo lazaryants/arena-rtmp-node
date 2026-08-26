@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from flask import Flask, g, render_template, request, jsonify, redirect, session
+from flask import Flask, g, render_template, request, jsonify, redirect, session, send_file
 import os
 import json
 import re
@@ -153,6 +153,7 @@ def enforce_role_access():
         "login",
         "api_node_health",
         "api_node_metrics",
+        "api_node_preview",
         "api_session",
         "api_config_fields",
         "api_config_fields_status",
@@ -546,6 +547,111 @@ def api_node_metrics():
         }), 503
 
 
+PREVIEW_MAX_BYTES = 200 * 1024
+
+
+@app.route(
+    "/api/node/previews/<int:field_id>.jpg",
+    methods=["GET", "PUT"],
+)
+def api_node_preview(field_id):
+    """Receive authenticated JPEG previews and serve the latest frame."""
+    if not 1 <= field_id <= 16:
+        return jsonify({
+            "success": False,
+            "message": "Preview field must be between 1 and 16",
+        }), 404
+
+    preview_path = SETTINGS.preview_dir / f"place{field_id}.jpg"
+    if request.method == "GET":
+        if not preview_path.is_file():
+            return jsonify({
+                "success": False,
+                "message": "Preview is not available",
+            }), 404
+        response = send_file(
+            preview_path,
+            mimetype="image/jpeg",
+            conditional=True,
+            max_age=0,
+        )
+        response.headers["Cache-Control"] = (
+            "no-store, no-cache, must-revalidate, max-age=0"
+        )
+        response.headers["X-Preview-Age"] = (
+            f"{max(0.0, time.time() - preview_path.stat().st_mtime):.1f}"
+        )
+        return response
+
+    expected_token = SETTINGS.preview_upload_token
+    supplied_header = request.headers.get("Authorization", "")
+    supplied_token = (
+        supplied_header[7:]
+        if supplied_header.startswith("Bearer ")
+        else ""
+    )
+    if len(expected_token) < 32:
+        return jsonify({
+            "success": False,
+            "message": "Preview upload is not configured",
+        }), 503
+    if not (
+        supplied_token
+        and secrets.compare_digest(supplied_token, expected_token)
+    ):
+        return jsonify({
+            "success": False,
+            "message": "Preview authentication failed",
+        }), 401
+
+    content_length = request.content_length
+    if content_length is None or content_length > PREVIEW_MAX_BYTES:
+        return jsonify({
+            "success": False,
+            "message": "JPEG preview is too large",
+        }), 413
+    if request.mimetype != "image/jpeg":
+        return jsonify({
+            "success": False,
+            "message": "Preview must use image/jpeg",
+        }), 415
+
+    image = request.get_data(cache=False)
+    if (
+        not image
+        or len(image) > PREVIEW_MAX_BYTES
+        or not image.startswith(b"\xff\xd8")
+        or not image.endswith(b"\xff\xd9")
+    ):
+        return jsonify({
+            "success": False,
+            "message": "Invalid JPEG preview",
+        }), 400
+
+    SETTINGS.preview_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+        mode=0o700,
+    )
+    temporary_path = SETTINGS.preview_dir / (
+        f".place{field_id}.{secrets.token_hex(8)}.tmp"
+    )
+    try:
+        with temporary_path.open("xb") as destination:
+            destination.write(image)
+            destination.flush()
+            os.fsync(destination.fileno())
+        temporary_path.chmod(0o600)
+        os.replace(temporary_path, preview_path)
+    finally:
+        try:
+            temporary_path.unlink()
+        except FileNotFoundError:
+            pass
+
+    return "", 204
+
+
 @app.errorhandler(ConfigValidationError)
 def handle_invalid_stored_config(error):
     """Do not expose config contents when the stored file is invalid."""
@@ -730,12 +836,9 @@ def get_fields():
     for field_id, field_data in config.get('fields', {}).items():
         urls = field_data.get('restream_urls', [])
         
-        # Получаем stream key (по умолчанию stream{id})
-        stream_key = field_data.get('stream_key', f'stream{field_id}')
-        
         fields[int(field_id)] = {
             'name': field_data.get('name', f'Field {field_id}'),
-            'source': f'{SETTINGS.local_rtmp_origin}/place{field_id}/{stream_key}',
+            'source': f'{SETTINGS.local_rtmp_origin}/place{field_id}',
             'urls': urls,
             'pid_files': [str(SETTINGS.pid_file(field_id, i)) for i in range(len(urls))],
             'log_files': [str(SETTINGS.log_file(field_id, i)) for i in range(len(urls))]

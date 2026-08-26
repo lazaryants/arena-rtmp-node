@@ -18,6 +18,9 @@ except ImportError:
 CONFIG_FILE = SETTINGS.config_file
 MAX_BODY_SIZE = 65536
 PLACE_RE = re.compile(r"place([1-9]|1[0-6])")
+MEDIAMTX_PATH_RE = re.compile(
+    r"(place([1-9]|1[0-6]))/([A-Za-z0-9_.-]+)"
+)
 
 
 def load_config():
@@ -93,6 +96,54 @@ def authorize_publish(
     return 200, "authorized"
 
 
+
+def authorize_mediamtx(payload):
+    """Authorize a legacy RTMP URL received by MediaMTX."""
+    if not isinstance(payload, dict):
+        return 403, "invalid_payload", "unknown", "unknown"
+    if payload.get("action") != "publish":
+        return 403, "invalid_action", "unknown", "unknown"
+    if payload.get("protocol") != "rtmp":
+        return 403, "invalid_protocol", "unknown", "unknown"
+
+    path = payload.get("path")
+    query = payload.get("query", "")
+
+    if not isinstance(path, str):
+        return 403, "invalid_path", "unknown", "unknown"
+    if not isinstance(query, str):
+        return 403, "invalid_query", "unknown", "unknown"
+
+    match = MEDIAMTX_PATH_RE.fullmatch(path)
+    if not match:
+        return 403, "invalid_path", "unknown", "unknown"
+
+    app_name = match.group(1)
+    stream_name = match.group(3)
+
+    query_values = parse_qs(
+        query,
+        keep_blank_values=True,
+    )
+    provided_key = query_values.get(
+        "key",
+        [""],
+    )[0]
+
+    status, result = authorize_publish(
+        app_name,
+        stream_name,
+        query,
+        provided_key,
+    )
+
+    return (
+        status,
+        result,
+        app_name,
+        stream_name,
+    )
+
 class AuthHandler(BaseHTTPRequestHandler):
     server_version = "ArenaRTMPAuth/2"
 
@@ -117,10 +168,12 @@ class AuthHandler(BaseHTTPRequestHandler):
             self.send_text(404, "not found")
 
     def do_POST(self):
-        if self.path != "/auth":
+        if self.path not in {
+            "/auth",
+            "/mediamtx-auth",
+        }:
             self.send_text(404, "not found")
             return
-
         try:
             content_length = int(
                 self.headers.get(
@@ -128,14 +181,12 @@ class AuthHandler(BaseHTTPRequestHandler):
                     "0",
                 )
             )
-
             if (
                 content_length < 0
                 or content_length > MAX_BODY_SIZE
             ):
                 self.send_text(413, "request too large")
                 return
-
             body = self.rfile.read(
                 content_length
             ).decode(
@@ -143,35 +194,41 @@ class AuthHandler(BaseHTTPRequestHandler):
                 errors="replace",
             )
 
-            params = parse_qs(
-                body,
-                keep_blank_values=True,
-            )
-
-            app_name = params.get(
-                "app",
-                [""],
-            )[0]
-            stream_name = params.get(
-                "name",
-                [""],
-            )[0]
-            raw_args = params.get(
-                "args",
-                [""],
-            )[0]
-            provided_key = params.get(
-                "key",
-                [""],
-            )[0]
-
-            status, result = authorize_publish(
-                app_name,
-                stream_name,
-                raw_args,
-                provided_key,
-            )
-
+            if self.path == "/mediamtx-auth":
+                payload = json.loads(body)
+                (
+                    status,
+                    result,
+                    app_name,
+                    stream_name,
+                ) = authorize_mediamtx(payload)
+            else:
+                params = parse_qs(
+                    body,
+                    keep_blank_values=True,
+                )
+                app_name = params.get(
+                    "app",
+                    [""],
+                )[0]
+                stream_name = params.get(
+                    "name",
+                    [""],
+                )[0]
+                raw_args = params.get(
+                    "args",
+                    [""],
+                )[0]
+                provided_key = params.get(
+                    "key",
+                    [""],
+                )[0]
+                status, result = authorize_publish(
+                    app_name,
+                    stream_name,
+                    raw_args,
+                    provided_key,
+                )
         except Exception:
             status, result = 503, "auth_error"
             app_name = "unknown"
@@ -184,7 +241,6 @@ class AuthHandler(BaseHTTPRequestHandler):
             f"result={result}",
             flush=True,
         )
-
         self.send_text(
             status,
             "OK" if status == 200 else "Forbidden",
