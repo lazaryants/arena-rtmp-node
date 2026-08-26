@@ -99,6 +99,10 @@ def validate_profile(profile):
     if type(rtmp_port) is not int or not 1 <= rtmp_port <= 65535:
         raise ValueError("rtmp_port must be an integer from 1 to 65535")
 
+    rtmp_enabled = profile.get("rtmp_enabled", True)
+    if type(rtmp_enabled) is not bool:
+        raise ValueError("rtmp_enabled must be a boolean")
+
     return {
         "server_names": server_names,
         "tls_certificate": absolute_path(profile["tls_certificate"], "tls_certificate"),
@@ -114,6 +118,7 @@ def validate_profile(profile):
         ),
         "manager_upstream": manager_upstream,
         "rtmp_port": rtmp_port,
+        "rtmp_enabled": rtmp_enabled,
         "auth_callback": auth_callback,
         "auth_places": set(auth_places),
         "mediamtx_hls_upstream": mediamtx_hls_upstream,
@@ -222,10 +227,24 @@ def render(profile_path, output_dir):
     http_template = (TEMPLATE_ROOT / "http-site.conf.template").read_text(encoding="utf-8")
     stat_template = (TEMPLATE_ROOT / "rtmp-stat-local.conf").read_text(encoding="utf-8")
 
-    rtmp = replace_markers(rtmp_template, {
-        "RTMP_PORT": profile["rtmp_port"],
-        "APPLICATIONS": render_applications(profile),
-    })
+    if profile["rtmp_enabled"]:
+        rtmp = replace_markers(rtmp_template, {
+            "RTMP_PORT": profile["rtmp_port"],
+            "APPLICATIONS": render_applications(profile),
+        })
+        stat = stat_template
+    else:
+        rtmp = (
+            "# Public RTMP ingress is handled by "
+            "arena-mediamtx-ingress.service.\n"
+            "# This file intentionally contains no "
+            "nginx-rtmp applications.\n"
+        )
+        stat = (
+            "# nginx-rtmp statistics are disabled in "
+            "full MediaMTX mode.\n"
+        )
+
     http = replace_markers(http_template, {
         "SERVER_NAMES": " ".join(profile["server_names"]),
         "TLS_CERTIFICATE": profile["tls_certificate"],
@@ -240,7 +259,7 @@ def render(profile_path, output_dir):
     outputs = {
         "arena-rtmp.conf": rtmp,
         "arena-rtmp-http.conf": http,
-        "arena-rtmp-stat-local.conf": stat_template,
+        "arena-rtmp-stat-local.conf": stat,
     }
     for filename, content in outputs.items():
         atomic_write(output_dir / filename, content)
