@@ -97,8 +97,11 @@ class RestreamRecoveryTests(unittest.TestCase):
         self.supervisor.desired.update({(10, 0)}, True)
 
     def test_manual_start_persists_desired_state_before_launch(self):
+        self.supervisor._recovery_record((10, 0))["failure_count"] = 4
+
         def check_state(*args):
             self.assertEqual(self.supervisor.desired.load(), {(10, 0)})
+            self.assertNotIn((10, 0), self.supervisor.recovery)
             return {"success": True, "started": [0], "already_running": []}
 
         self.supervisor._start_selected.side_effect = check_state

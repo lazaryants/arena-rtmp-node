@@ -184,10 +184,10 @@ class RestreamSupervisor:
     def start(self, field_id, url_index=None):
         with self.lock:
             field, indices = self.selected_indices(field_id, url_index)
-            self.desired.update(
-                {(field_id, index) for index in indices},
-                True,
-            )
+            pairs = {(field_id, index) for index in indices}
+            self.desired.update(pairs, True)
+            for pair in pairs:
+                self.recovery.pop(pair, None)
             return self._start_selected(field_id, field, indices)
 
     def _stop_selected(self, field_id, indices):
