@@ -42,6 +42,7 @@ CapabilityBoundingSet=
 AmbientCapabilities=
 ReadWritePaths=/opt/arena-rtmp-node/logs
 ReadWritePaths=/opt/arena-rtmp-node/run
+ReadWritePaths=/opt/arena-rtmp-node/state
 
 [Install]
 WantedBy=multi-user.target

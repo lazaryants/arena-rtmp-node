@@ -23,6 +23,10 @@ class SettingsTests(unittest.TestCase):
                 self.assertEqual(settings.template_dir, root / "app/templates")
                 self.assertEqual(settings.users_file, root / "state/users.json")
                 self.assertEqual(settings.audit_file, root / "state/audit.jsonl")
+                self.assertEqual(
+                    settings.desired_restreams_file,
+                    root / "state/restream-desired.json",
+                )
                 self.assertFalse(settings.rbac_enabled)
 
     def test_explicit_overrides_are_respected(self):
@@ -37,6 +41,7 @@ class SettingsTests(unittest.TestCase):
             "ARENA_RTMP_AUTH_BIND": "127.0.0.1:18080",
             "ARENA_RTMP_USERS_FILE": "/var/lib/node/users.json",
             "ARENA_RTMP_AUDIT_FILE": "/var/lib/node/audit.jsonl",
+            "ARENA_RTMP_DESIRED_RESTREAMS_FILE": "/var/lib/node/desired.json",
             "ARENA_RTMP_RBAC_ENABLED": "true",
             "ARENA_RTMP_SESSION_SECRET": "x" * 32,
         }
@@ -59,6 +64,10 @@ class SettingsTests(unittest.TestCase):
             self.assertEqual(
                 settings.audit_file,
                 Path("/var/lib/node/audit.jsonl"),
+            )
+            self.assertEqual(
+                settings.desired_restreams_file,
+                Path("/var/lib/node/desired.json"),
             )
             self.assertTrue(settings.rbac_enabled)
             self.assertEqual(settings.session_secret, "x" * 32)
@@ -88,3 +97,4 @@ class SettingsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
