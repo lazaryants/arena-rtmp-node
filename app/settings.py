@@ -170,6 +170,13 @@ class Settings:
         )
 
     @property
+    def desired_restreams_file(self):
+        configured = os.environ.get("ARENA_RTMP_DESIRED_RESTREAMS_FILE")
+        return Path(configured) if configured else (
+            self.project_root / "state" / "restream-desired.json"
+        )
+
+    @property
     def run_dir(self):
         configured = os.environ.get("ARENA_RTMP_RUN_DIR")
         return Path(configured) if configured else self.project_root / "run"
@@ -199,3 +206,4 @@ class Settings:
 
 
 SETTINGS = Settings()
+
